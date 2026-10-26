@@ -1,10 +1,10 @@
-# v0.9-draft：待用户确认三文档后纳入 Spec v1.0
-# 命令面唯一权威 = docs/phase1/consistency-check.md §3（15 组命令，R1-R12 裁定）+ §6（10 错误码）
+# v0.10-draft：命名已锁定 Corral；待用户确认三文档后纳入 Spec v1.0
+# 命令面唯一权威 = docs/phase1/consistency-check.md §3（18 组命令，R1-R13 裁定）+ §6（10 错误码）
 # 本文件为机器可读伴侣；禁发明新命令/新参数/新错误码
 openapi: 3.1.0
 info:
   title: Corral Daemon Control API
-  version: 0.9.0-draft
+  version: 0.10.0-draft
   summary: Corral daemon 本地控制通道（RPC）——CLI 与 GUI 的共同后端契约
   description: |
     ## 定位
@@ -24,7 +24,7 @@ info:
     OS 级副作用命令（`open` 的浏览器启动 / `edit` 的文件管理器揭示）在 --json 模式下
     只返回目标数据（站点 URL / 配置目录路径）、不执行副作用；完整动作仅在交互模式执行。
 
-    ## CLI ↔ RPC 映射（15 组命令族）
+    ## CLI ↔ RPC 映射（18 组命令族）
     | CLI | RPC |
     |---|---|
     | `corral park <dir>` / `corral unpark <dir>` | POST /park · POST /unpark |
@@ -39,8 +39,17 @@ info:
     | `corral open <site>` | POST /open |
     | `corral edit [site]` | POST /edit |
     | `corral new <framework> <name>` | POST /new |
+    | `corral mysql:start \| stop \| restart \| status` | POST /mysql/start · POST /mysql/stop · POST /mysql/restart · GET /mysql/status |
+    | `corral mysql:install <v>` / `corral mysql:uninstall <v>` | POST /mysql/install · POST /mysql/uninstall |
+    | `corral redis:start \| stop \| restart \| status` | POST /redis/start · POST /redis/stop · POST /redis/restart · GET /redis/status |
+    | `corral debug:on [site]` / `corral debug:off [site]` | POST /debug/on · POST /debug/off |
     | `corral doctor` / `corral uninstall` | GET /doctor · POST /uninstall |
     | `corral`（裸命令 = 帮助） | GET /help |
+
+    ## 附加服务（R13，ADR-008/009）
+    MySQL 8.4 LTS + Redis 7.x 与 PHP 同 catalog 分发（SHA256 + 按需下载），daemon services 服务族托管；
+    默认不登录自启；端口 3306/6379 冲突 → PORT_CONFLICT。MySQL root 空密码 + 仅 127.0.0.1（禁生产）。
+    Xdebug 3.x 随 PHP 版本内置（mode 默认 off）；debug:on/off 写作用域 php.ini，site 缺省 = 全局。
 
     ## 版本参数归一化（R12）
     所有接受 PHP 版本参数的入口（use / isolate / php:install / php:uninstall / link --php / new --php）
@@ -88,6 +97,8 @@ tags:
     description: PHP 版本管理
   - name: stack
     description: 本地栈启停与状态
+  - name: services
+    description: 附加服务（MySQL/Redis 生命周期与版本管理，R13）
   - name: meta
     description: 脚手架/自检/卸载/帮助
 paths:
@@ -476,6 +487,168 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "403": { $ref: "#/components/responses/PermissionDenied" }
+  /mysql/start:
+    post:
+      operationId: startMysql
+      summary: 启动 MySQL 服务
+      description: |
+        CLI `corral mysql:start`。未安装时 hint 指向 `corral mysql:install 8.4`（VERSION_NOT_INSTALLED）；
+        端口 3306 占用 → PORT_CONFLICT + 占用进程名/PID；MySQL 首启 3–10s，走 Starting 秒表机制。
+      tags: [services]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "409": { $ref: "#/components/responses/PortConflict" }
+        "422": { $ref: "#/components/responses/VersionNotInstalled" }
+  /mysql/stop:
+    post:
+      operationId: stopMysql
+      summary: 停止 MySQL 服务
+      description: CLI `corral mysql:stop`。停用不等于卸载——数据目录 `<appdata>/mysql/data` 保留。
+      tags: [services]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "503": { $ref: "#/components/responses/DaemonNotRunning" }
+  /mysql/restart:
+    post:
+      operationId: restartMysql
+      summary: 重启 MySQL 服务（daemon 侧原子）
+      description: CLI `corral mysql:restart`。
+      tags: [services]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /mysql/status:
+    get:
+      operationId: getMysqlStatus
+      summary: MySQL 服务状态 + 连接信息
+      description: |
+        CLI `corral mysql:status`。data = Service：name/version/status/port/pid/dataDir/env（DB_* 建议值）。
+      tags: [services]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /mysql/install:
+    post:
+      operationId: installMysql
+      summary: 安装 MySQL 版本（catalog 下载 + SHA256 + 数据目录初始化）
+      description: |
+        CLI `corral mysql:install <v>`。首发 8.4 LTS；官方二进制无代码签名，SHA256 + 官方域名 HTTPS 双校验
+        （CHECKSUM_MISMATCH → 删半成品 + 重试）。安装即完成 `--initialize-insecure` 数据目录初始化。
+      tags: [services]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version:
+                  type: string
+                  examples: ["8.4"]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "422": { $ref: "#/components/responses/ChecksumMismatch" }
+        "502": { $ref: "#/components/responses/NetworkError" }
+  /mysql/uninstall:
+    post:
+      operationId: uninstallMysql
+      summary: 卸载 MySQL（默认保留数据目录）
+      description: |
+        CLI `corral mysql:uninstall <v>`。**默认保留 data 目录**（防误删用户库）；`purge: true` 才删数据，
+        且 daemon 侧要求二次确认参数（`confirm: true`），agent 调用显式传 true 才执行（Spec §11 坑 13）。
+      tags: [services]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: string }
+                purge:
+                  type: boolean
+                  default: false
+                  description: true = 连同数据目录删除（需 confirm 同真）
+                confirm: { type: boolean, default: false }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+  /redis/start:
+    post:
+      operationId: startRedis
+      summary: 启动 Redis 服务
+      description: |
+        CLI `corral redis:start`。未安装 → hint 指向安装入口（VERSION_NOT_INSTALLED）；
+        端口 6379 占用 → PORT_CONFLICT。macOS 无官方预编译：CI 自编译 prebuild 或复用 Homebrew 版（明示版本）。
+      tags: [services]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "409": { $ref: "#/components/responses/PortConflict" }
+        "422": { $ref: "#/components/responses/VersionNotInstalled" }
+  /redis/stop:
+    post:
+      operationId: stopRedis
+      summary: 停止 Redis 服务
+      description: CLI `corral redis:stop`。appendonly 落盘在数据目录，停服不丢数据。
+      tags: [services]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "503": { $ref: "#/components/responses/DaemonNotRunning" }
+  /redis/restart:
+    post:
+      operationId: restartRedis
+      summary: 重启 Redis 服务（daemon 侧原子）
+      description: CLI `corral redis:restart`。
+      tags: [services]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /redis/status:
+    get:
+      operationId: getRedisStatus
+      summary: Redis 服务状态 + 连接信息
+      description: CLI `corral redis:status`。data = Service：name/version/status/port/pid/env（REDIS_* 建议值）。
+      tags: [services]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /debug/on:
+    post:
+      operationId: debugOn
+      summary: 开启 Xdebug（写作用域 php.ini）
+      description: |
+        CLI `corral debug:on [site]`。site 缺省 = 全局默认版本；xdebug 3.x 随 PHP 版本内置
+        （mode=develop,debug，discover_client_host 自动探测）。IDE launch.json 模板见 corral doctor 输出。
+      tags: [services]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                site: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+  /debug/off:
+    post:
+      operationId: debugOff
+      summary: 关闭 Xdebug（写作用域 php.ini）
+      description: CLI `corral debug:off [site]`。site 缺省 = 全局。
+      tags: [services]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                site: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
   /help:
     get:
       operationId: showHelp
@@ -575,6 +748,34 @@ components:
         sites:
           type: array
           items: { $ref: "#/components/schemas/Site" }
+        services:
+          type: array
+          items: { $ref: "#/components/schemas/Service" }
+          description: 附加服务状态数组（mysql/redis，R13）
+    ServiceStatus:
+      type: string
+      enum: [running, stopped, starting, error, not-installed]
+      description: |
+        服务五态（R13）：not-installed = 未安装（区分 stopped）；starting 走秒表机制
+        （MySQL 首启 3–10s，10s 超时转 error）。与站点五态同构但独立词表（多 not-installed 一态）。
+    Service:
+      type: object
+      required: [name, status]
+      properties:
+        name:
+          type: string
+          enum: [mysql, redis]
+        version: { type: string, examples: ["8.4"] }
+        status: { $ref: "#/components/schemas/ServiceStatus" }
+        port:
+          type: integer
+          description: 3306（mysql）/ 6379（redis）
+        pid: { type: integer }
+        dataDir: { type: string, description: MySQL = <appdata>/mysql/data；Redis = 数据目录 }
+        env:
+          type: object
+          additionalProperties: { type: string }
+          description: .env 建议值（DB_HOST/DB_PORT/... 或 REDIS_HOST/REDIS_PORT）；服务未起时为空 + hint
   responses:
     Ok:
       description: 成功信封（status=ok，data 见各 operation）

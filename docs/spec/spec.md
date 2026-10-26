@@ -1,9 +1,9 @@
-# Corral Spec v0.9（规格契约 · 草案）
+# Corral Spec v0.10（规格契约 · 草案）
 
-> 状态：**v0.9-draft**——待用户对三文档（PRD v1.0 / 架构调研 + ADR-001~007 / 设计契约 v1.5）的 4 项拍板后升 v1.0
-> 撰写：大湾区靓仔（总监）| 2026-10-26 | 命名：Corral（工作名，待用户终确认；命令名 `corral` 与显示名解耦，改名只动展示层）
-> 权威来源：docs/phase1/prd.md（v1.0）· docs/phase1/architecture-research.md + docs/decisions/ADR-001~007 · docs/phase1/consistency-check.md（R1-R12）· docs/design/（v1.4+）· docs/spikes/2026-10-26-node-pty.md
-> 机器可读伴侣：docs/spec/openapi.yaml（v0.9-draft，架构师在途）· docs/design/design-system/design-tokens.json
+> 状态：**v0.10-draft**——命名已锁定 **Corral**、PHP 分发已确认按需下载（R13）；待用户对三文档的剩余 2 项拍板（三文档确认 / Windows 签名预算）后升 v1.0
+> 撰写：大湾区靓仔（总监）| 2026-10-26 | 命名：**Corral（已锁定，R13）**；命令名 `corral` 与显示名解耦，改名只动展示层
+> 权威来源：docs/phase1/prd.md（v1.0）· docs/phase1/architecture-research.md + docs/decisions/ADR-001~009 · docs/phase1/consistency-check.md（R1-R13）· docs/design/（v1.6）· docs/spikes/2026-10-26-node-pty.md
+> 机器可读伴侣：docs/spec/openapi.yaml（命令面 18 组）· docs/design/design-system/design-tokens.json
 
 ---
 
@@ -15,7 +15,7 @@
 - **差异化三轴**：① 核心体验完整免费（不打付费墙）② 双端原生一等公民 ③ CLI/GUI 对等 + `--json` 机器可读（MCP 为 v1.5 薄封装）
 - **产品姿态**：daemon 是唯一配置源与状态源；GUI 是 daemon 的取景器（关窗不停服）；CLI/GUI 命令同源注册表（shared/commands.ts，RPC 与 CLI 1:1）
 
-## 2. MVP 范围（P0 8 项 / 6 个双周增量 / 12 周 v1.0）
+## 2. MVP 范围（P0 11 项 / 6 个双周增量 / 14–16 周 v1.0）
 
 | # | P0 功能 | 增量 |
 |---|---|---|
@@ -26,23 +26,28 @@
 | 5 | CLI 全功能 + `--json` 机器可读输出 | I1 / I5 |
 | 6 | 站点生命周期（link/unlink/start/stop/restart/status） | I1 |
 | 7 | 一键 HTTPS（本地 CA + 系统信任） | I3 |
-| 8 | 最小桌面 GUI（站点列表/状态/PHP 切换/日志入口） | I4 |
+| 8 | 最小桌面 GUI（Sites/PHP/Logs 三视图 + Services） | I4 |
+| 9 | **MySQL 服务管理**（8.4 LTS 按需下载 + start/stop/restart/status + 数据目录 + env 引导） | I3 |
+| 10 | **Redis 服务管理**（7.x 按需下载 + 生命周期同 MySQL） | I3 |
+| 11 | **Xdebug debug 开关**（版本内置 + debug:on/off [site] + IDE 配置引导） | I3 |
+
+> R13 范围变更（2026-10-26 用户需求）：原 8 项 P0 + 3 项（#9/#10/#11 来自用户「还需要增加 mysql redis debug」），架构复用 PHP 分发体系（ADR-008/009），排期 12 周 → **14–16 周**（单人 1.5–2 人月 → 2.5–3 人月）。
 
 | 增量 | 周期 | 内容 | 可演示结果 |
 |---|---|---|---|
 | I1 | W1–2 | monorepo 骨架（含 Electron 空壳）；CLI 骨架；PHP 下载管理（SHA256）；link/unlink；nginx vhost；macOS DNS | macOS `corral link` 后 http://app.test 可访问 |
 | I2 | W3–4 | Windows 对等实现（hosts + helper + nginx + php-cgi）；安装器 .dmg/.exe；doctor | Windows 同命令可用；新人装完即过自检 |
-| I3 | W5–6 | 一键 HTTPS（mkcert 通配符 + 系统信任）；parked 目录监听 | `corral park ~/code` 后新目录 60 秒内自动上线 https |
-| I4 | W7–8 | 最小桌面 GUI（Sites/PHP/Logs 三视图 + ⌘K + Console dock） | 不敲命令完成 80% 日常操作 |
-| I5 | W9–10 | CLI `--json` 全量化；.corral.yaml 配置即代码；`corral new`；自动更新 | 脚本/agent 可驱动全部核心操作 |
-| I6 | W11–12 | 边界状态打磨；opt-in 埋点；双语 README；发布 v1.0 | 公开发布 |
+| I3 | W5–7 | 一键 HTTPS（mkcert 通配符 + 系统信任）；parked 目录监听；**MySQL/Redis 服务 + CLI 命令族（ADR-008）；Xdebug 开关（ADR-009）** | `corral park ~/code` 自动上线 https；`corral mysql:start` 后 Laravel .env 直连 |
+| I4 | W8–10 | 桌面 GUI（Sites/PHP/Logs + **Services 视图** + ⌘K + Console dock + debug 开关） | 不敲命令完成 80% 日常操作 |
+| I5 | W11–13 | CLI `--json` 全量化；.corral.yaml 配置即代码；`corral new`；自动更新 | 脚本/agent 可驱动全部核心操作 |
+| I6 | W14–16 | 边界状态打磨；opt-in 埋点；双语 README；发布 v1.0 | 公开发布 |
 
 ## 3. 不做清单（MVP 明确不做）
 
 | 不做 | 原因 | 重新评估 |
 |---|---|---|
-| 数据库服务（MySQL/PG/Redis） | 单人最大工作量项（约 5 人月）；doctor 探测本机已有 DB 并输出 .env 建议值兜底 | v1.2 |
-| 邮件捕获 | 同上；引导 Mailpit 独立工具 | v1.3 |
+| 多引擎数据库（PostgreSQL/MariaDB/SQLite 服务） | MySQL + Redis 已覆盖 Laravel 主路径；每多一引擎 = 一份二进制分发 + 一套数据目录容错 | v1.2 |
+| 邮件捕获 | 引导 Mailpit 独立工具 | v1.3 |
 | dump 窗口 / profiler / Tinker | 深度调试栈重投入 | v2.0 |
 | MCP server | CLI --json 已可驱动；薄封装 | v1.5 |
 | Linux 支持 | 硬约束双端；Linux 有 Lerd 占位 | 社区贡献者出现后 |
@@ -50,6 +55,8 @@
 | 容器/VM 模式 | 与「原生无依赖」定位冲突 | 不做 |
 | 遥测默认开启 | 开源社区信任生命线 | 永不默认开启 |
 | `corral link [name]` 可选站点名 | 命令面冻结最小化 | v1.1 ADR-lite（R12-3） |
+| Redis 多版本管理 | Laravel 开发 7.x 单版本足够；版本管理机制先不建 | v1.x |
+| MySQL 远程访问 / 多实例 | 本地开发单实例 127.0.0.1 足够；远程是安全敞口 | 不做（README 风险提示兜底） |
 
 ## 4. 技术架构
 
@@ -67,6 +74,7 @@
 | 流通道 | ws（daemon 依赖，纯 JS） | pty 字节流 + Logs tail 共用 |
 | TLS | mkcert 随包 | 通配符 `*.test` 单证书（MVP），per-site v1.0 |
 | 服务编排 | 自写（不用 Windows Services 跑 nginx/php-cgi） | NSSM 仅用于注册 Windows helper |
+| 附加服务 | MySQL 8.4 LTS + Redis 7.x（catalog 按需下载，ADR-008） | 与 PHP 同分发体系；daemon supervisor 托管；默认不登录自启 |
 
 ### 4.2 进程拓扑（ADR-001/002/010 连锁）
 
@@ -81,7 +89,8 @@ Electron main ─────────┤
               │  分层服务：              │
               │  supervisor / sites /   │
               │  php / nginx / dns /    │
-              │  tls / privileged       │
+              │  tls / privileged /     │
+              │  services（mysql/redis）│
               └───────┬────────────────┘
                       │ RPC 控制通道（TCP 127.0.0.1 + token）
                       │ WS 流通道（127.0.0.1 + token，另端口）——pty + Logs tail
@@ -105,27 +114,36 @@ Electron main ─────────┤
 | 提权 | 首次 CA 信任 + launchd 特权端口 | helper 安装 + CA 信任（一次性，不可避免） |
 | 更新 | Squirrel.Mac（**拒绝未签名/未公证**）→ Developer ID + notarytool + stapler | Authenticode / Azure Trusted Signing（**待用户拍板**） |
 
-### 4.4 PHP 分发（ADR-004，诠释**待用户拍板**：按需下载 vs 全内置）
+### 4.4 PHP 分发与扩展集（ADR-004 + ADR-009，诠释已确认：**按需下载**）
 
 - app 内 catalog（版本 + SHA256 + URL）+ 解压到应用数据目录；macOS static-php-cli 静态构建 / Windows 官方 NTS zip
-- MVP 默认装 4 个主力版本（8.1/8.2/8.3/8.4），7.4/8.0/8.5 按需（内存红线 <200MB 的依据）
-- **静态构建扩展集固定、不可 pecl**（README 公布扩展清单）——不可行警告级约束
+- **用户选择版本即自动下载安装**（R13 确认按需下载模式）；MVP 默认呈现 8.1/8.2/8.3/8.4 四个主力版本，7.4/8.0/8.5 按需
+- **默认扩展集**（ADR-009 确定清单，README 与 php:list --json 公布）：Laravel 硬需求 13 项（ctype/curl/dom/fileinfo/filter/hash/mbstring/openssl/pcre/pdo/session/tokenizer/xml）+ 开发默认（zip/bcmath/intl/gd/pdo_mysql/pdo_pgsql/sqlite3/redis/xdebug）+ 平台条件（pcntl/posix 仅 macOS）
+- 静态构建扩展集固定、不可 pecl（README 公布清单）；清单外扩展不支持，是「零依赖开箱」的代价
 - PHP/nginx 二进制更新与 app 更新解耦（独立 catalog 通道）
 
-### 4.5 打包与签名
+### 4.5 附加服务（ADR-008：MySQL / Redis）
+
+- **分发**：与 PHP 同 catalog 通道；MySQL 官方社区版二进制（mac tar.gz / win zip，8.4 LTS 首发）；Redis macOS CI 自编译 prebuild（或复用已装 Homebrew 版并提示）/ Windows 社区预编译 zip（7.x）
+- **托管**：daemon services 服务族（与 php/nginx 同看护机制）；**默认不登录自启**（按需 start）；Windows 不注册系统服务
+- **端口**：MySQL 3306 / Redis 6379；占用 → PORT_CONFLICT + 进程名/PID/释放指引
+- **数据目录**：`<appdata>/mysql/data`（--initialize-insecure）；root 空密码 + 仅 127.0.0.1（本地开发惯例，README/doctor 风险提示，禁生产）
+- **env 引导**：doctor 与 link 成功输出动态给出 DB_* / REDIS_* 建议值（服务未起 → 提示对应 start 命令）
+
+### 4.6 打包与签名
 
 - electron-builder：macOS .dmg + Windows NSIS；包体 150–200MB（含随包 Node + nginx + mkcert + node-pty 原生模块）
 - macOS：Apple Developer $99/年 + notarytool； entitlements（allow-jit 等；helper 与主进程分离）
 - Windows：Azure Trusted Signing 约 $9.99/月（约 $120/年）——**待用户拍板**；不批的降级路径：NSIS 无签名 + SmartScreen 恐吓 + 无差分更新（对冷启动伤害大，PRD/Spec 风险节明文）
 - 私钥/证书为 CI secret，丢失即断更；GitHub Actions macOS runner 10 倍分钟计费
 
-### 4.6 数据层（ADR-007）
+### 4.7 数据层（ADR-007）
 
 JSON 原子写 + schema 版本号 + repository 接口抽象；**MVP 无数据库**（better-sqlite3 需按 ABI 重编、node:sqlite 带实验标记）；数据量/并发成瓶颈时切 SQLite，业务层零改动。实体：sites / settings / parked-dirs / php-versions / catalog-cache（结构见 §6）。
 
 ## 5. API 清单
 
-### 5.1 CLI 命令面（15 组，权威 = consistency-check §3；机器可读版 = docs/spec/openapi.yaml，v0.9-draft 在途）
+### 5.1 CLI 命令面（18 组，权威 = consistency-check §3；机器可读版 = docs/spec/openapi.yaml）
 
 | 命令 | 功能 |
 |---|---|
@@ -134,13 +152,17 @@ JSON 原子写 + schema 版本号 + repository 接口抽象；**MVP 无数据库
 | `corral secure` / `corral unsecure` | HTTPS 开关 |
 | `corral isolate <v>` / `corral unisolate` | 站点钉 PHP 版本（v 接受 `php@<v>` 归一化，R12） |
 | `corral use <v>` | 切换全局 PHP（接受 `php@<v>`；**无参 = USAGE_ERROR**，hint 指向 `corral status`，R12） |
-| `corral php:list` | 版本列表（已装/可用） |
+| `corral php:list` | 版本列表（已装/可用 + extensions[]） |
 | `corral php:install <v>` / `corral php:uninstall <v>` | PHP 版本安装/卸载（catalog 下载 + SHA256） |
 | `corral start [site]` / `corral stop [site]` | 带站点 = 启用/停用站点（停用 = 摘除 vhost + 停止页，持久化）；无参 = 启停整个本地栈 |
 | `corral restart [site]` / `corral status` / `corral logs` | 重启（daemon 侧原子）/ 状态（五态）/ 日志 |
 | `corral open <site>` | 浏览器打开站点 URL（site 必填，无参 = 用法错误；CLI 不开 GUI 窗口） |
 | `corral edit [site]` | 文件管理器揭示站点生成配置目录（无参 = 主配置文件进编辑器） |
 | `corral new <framework> <name> [--php <v>]` | 项目脚手架（可选初始 PHP 版本，R12 版本入口之一） |
+| `corral mysql:start \| stop \| restart \| status` | MySQL 服务生命周期（ADR-008；默认不登录自启） |
+| `corral mysql:install <v>` / `corral mysql:uninstall <v>` | MySQL 版本安装/卸载（8.4 LTS 首发） |
+| `corral redis:start \| stop \| restart \| status` | Redis 服务生命周期（7.x 单版本，无 install/uninstall） |
+| `corral debug:on [site]` / `corral debug:off [site]` | Xdebug 开关（site 缺省 = 全局；写作用域 php.ini xdebug 段，ADR-009） |
 | `corral doctor` / `corral uninstall` | 自检 / 卸载（含 CA 移除、DNS 还原） |
 | `corral`（裸命令） | 帮助与命令列表 |
 | 全部命令支持 `--json` | 机器可读输出 |
@@ -179,8 +201,9 @@ JSON 原子写 + schema 版本号 + repository 接口抽象；**MVP 无数据库
 | sites | name, path, php, port, secure, enabled, status(五态) | 原子写；同名 link 后者覆盖 + toast |
 | settings | globalPhp, theme, shellChain(pwsh→powershell→cmd) | 主配置文件（人类可读可审计） |
 | parked-dirs | path[] | GUI 只读可见性行；写入仅 CLI + 配置文件 |
-| php-versions | version, path, installedAt, extensions[] | 目录按版本隔离，php.ini 每版本独立 |
-| catalog-cache | version, sha256, url, fetchedAt | 与 app 更新解耦 |
+| php-versions | version, path, installedAt, extensions[] | 目录按版本隔离，php.ini 每版本独立；extensions = ADR-009 清单 |
+| services | name(mysql/redis), version, status(running/stopped/error), port, pid, dataDir | MySQL 含 rootAuth(空密码) 与 initializedAt；默认 enabled=false |
+| catalog-cache | version, sha256, url, fetchedAt | 与 app 更新解耦；实体从仅 PHP 扩为 PHP + services |
 
 repository 接口抽象（list/get/put/delete per entity），schema 版本号字段；并发以后写入者为准并提示。
 
@@ -189,7 +212,8 @@ repository 接口抽象（list/get/put/delete per entity），schema 版本号�
 | 页面/表面 | 文件 | 要点 |
 |---|---|---|
 | Sites 视图 | pages/sites.md | SiteRow 五态双编码、虚拟化 100+、 watched-dirs 行、空状态教真实命令 |
-| PHP 视图 | pages/php.md | 分段控件全局切换、Install/Uninstall（php:install/uninstall chip）、下载确定性进度 |
+| PHP 视图 | pages/php.md | 分段控件全局切换、Install/Uninstall（php:install/uninstall chip）、下载确定性进度、debug 开关（debug:on/off chip） |
+| **Services 视图（新增，R13）** | pages/services.md（**待设计师产出**） | MySQL/Redis 卡片：状态点 + start/stop/restart chip + 端口/版本/数据目录行 + env 建议值复制；错误态复用 E1-E3 |
 | Logs 视图 | pages/logs.md | WS 流通道实时 tail（无文件轮询） |
 | 命令面板 ⌘K | pages/command-palette.md | Quick actions（start/stop 无参形）、行级 Restart chip、错误面板/toast 回执 |
 | Console dock | pages/console.md | 底部 dock 默认开 40%、⌃` 折叠、xterm.js + node-pty、Open in system terminal、无 chip |
@@ -215,6 +239,8 @@ repository 接口抽象（list/get/put/delete per entity），schema 版本号�
 - `corral park ~/code` 后新建目录 → 60 秒内自动上线 https
 - `corral isolate 8.1` → 该项目后续请求走 8.1，其他站点不受影响
 - `corral secure` → 系统信任库新增本地 CA，浏览器无证书警告
+- `corral mysql:start` → 3306 可连（root/空密码/127.0.0.1）；`corral redis:start` → 6379 可连；Laravel `.env` 用 doctor 输出建议值零改动跑通 migrate
+- `corral debug:on` → 下一请求携带 Xdebug 报文（IDE 可收）；`debug:off` → 报文消失；`debug:on <site>` 只影响该站点
 - 任意命令 `--json` → 合法 JSON（status/data/error），jq 与 agent 可解析
 - 无网络 → 已缓存版本站点全功能正常；下载新版本失败有明确归因与重试入口
 - GUI 首屏 <2s（热启动）/ <3s（冷启动含拉起 daemon，必须有骨架+渐进加载态）
@@ -239,13 +265,14 @@ xterm.js 渲染 + node-pty 宿主 daemon：spawn（选中站点目录或 home）
 ## 10. 边界约束
 
 - **空/错/加载三态**：空状态教真实可复制命令；80/443 占用报进程名+PID+释放指引；CA 拒绝给手动信任步骤；下载失败区分网络 vs 校验；PHP 下载确定性进度（%+速度+ETA+Cancel）；站点启动 Starting 秒表（10s 超时转 Error + View logs/Retry）
+- **附加服务边界**（R13）：MySQL 数据目录损坏 → doctor 探测 + 重建引导（禁静默清库）；MySQL root 空密码仅 127.0.0.1（README/doctor 风险提示，禁生产用途）；服务端口冲突（3306/6379）→ PORT_CONFLICT + 占用进程指引；服务启动慢（MySQL 首启 3–10s）→ Starting 秒表同站点机制；Redis 复用 Homebrew 版时版本不符预期要明示
 - **边界值**：站点名连字符/下划线/点；同名 link 覆盖提示；parked 目录删除 → missing 态；符号链接目录；100+ 站点虚拟化
 - **并发**：CLI 与 GUI 同站点操作以后写入者为准并提示；并行 link 不互阻
 - **权限拒绝**：一次性提权被拒 → 降级说明（手动信任指南），禁静默失败
 - **卸载**：`corral uninstall` 完整路径（CA 移除 + DNS 还原 + 配置清理）
 - **安全红线**：服务仅监听 127.0.0.1；下载物 SHA256 校验；CA 私钥不出本机；安装包签名（macOS 公证 + Windows Authenticode，后者待拍板）；禁 shell:true（参数数组化）
-- **不可行警告（4 条，架构师报告 §9）**：① Windows 无 php-fpm（php-cgi 进程池自写）② 静态 PHP 扩展集固定不可 pecl ③ Windows 无通配符 DNS ④ 一次性提权不可避免
-- **成本硬约束**：Apple $99/年 + Windows 签名（待拍板）+ GH Actions macOS 10 倍分钟
+- **不可行警告（5 条，架构师报告 §9 + ADR-008/009）**：① Windows 无 php-fpm（php-cgi 进程池自写）② 静态 PHP 扩展集固定不可 pecl ③ Windows 无通配符 DNS ④ 一次性提权不可避免 ⑤ MySQL 官方二进制无代码签名（SHA256 + 官方域名 HTTPS 双校验是唯一防线）
+- **成本硬约束**：Apple $99/年 + Windows 签名（待拍板）+ GH Actions macOS 10 倍分钟 + MySQL/Redis catalog CDN 流量
 
 ## 11. 已知坑（pitfalls）
 
@@ -259,6 +286,9 @@ xterm.js 渲染 + node-pty 宿主 daemon：spawn（选中站点目录或 home）
 8. **Squirrel.Mac 拒绝未签名/未公证更新**：签名链路断 = 断更；私钥为 CI secret
 9. **设计侧 8 条**（DESIGN.md §9.5）：硬编码 hex /  backgroundColor 不同步冷开白闪 / 命令字符串手写过期 / success 当文字色 / 脉冲忘 reduced-motion / 长域名不截断 / 无限进度动画 / 深色 hover 变暗
 10. **CLI 即用即退的边界**：懒连接 + 零依赖编译产物；任何 require 链路膨胀直接吃 <250ms 预算（spike：require node-pty 占 17–24ms，余量约 93%，但 CLI 不得 require node-pty/ws）
+11. **MySQL 官方 tar.gz 无代码签名**（ADR-008）：SHA256 + 官方域名 HTTPS 双校验是唯一防线；校验失败 → CHECKSUM_MISMATCH + 删除半成品 + 重试入口，禁部分解压残留
+12. **macOS Redis 无官方预编译**（ADR-008）：CI 自编译 prebuild（可执行位校验同 node-pty 纪律）或 Homebrew 复用检测；降级路径 = brew install 引导（体验降级但不阻断）
+13. **MySQL 数据目录容错**：--initialize-insecure 后数据目录非空/损坏 → doctor 探测 + 重建引导；大库场景卸载时禁误删（mysql:uninstall 默认保留 data，--purge 才删，二次确认）
 
 ## 12. 端到端验证（Phase 4 入口）
 
@@ -267,16 +297,19 @@ xterm.js 渲染 + node-pty 宿主 daemon：spawn（选中站点目录或 home）
 3. **版本闭环**：php:install 8.3 → isolate → use → php:uninstall → 状态一致
 4. **HTTPS 闭环**：secure → 浏览器零警告 → unsecure → 回退
 5. **Agent 闭环**：`corral link --json` → `corral status --json` → `corral logs --json`（jq 可解析；--json 下 open 只返数据不副作用）
-6. **GUI 闭环**：⌘K 全操作 + 三视图 + Console dock spawn/kill/重连 + 关窗不停服 + 托盘重开
-7. **故障注入**：端口占用 / 断网下载 / CA 拒绝 / parked 目录删除（missing）/ daemon  kill 自恢复
-8. **卸载闭环**：corral uninstall → CA 移除 + hosts/resolver 还原 + 无残留进程
-9. **CI 门禁**：P0 emoji 扫描 0 命中 / tokens.json 合法 / 命令表与 consistency-check §3 对齐（无 --all、无 stop&&start）/ openapi.yaml YAML 可解析 / lucide 精确钉 1.61.0
+6. **服务闭环**（R13）：`corral mysql:start --json` → 3306 可连 → Laravel migrate 跑通 → `corral mysql:stop` → 连接拒绝；`corral redis:start` → 6379；端口占用制造 PORT_CONFLICT；`corral debug:on` → IDE 收 Xdebug 报文 → `debug:off` → 消失
+7. **GUI 闭环**：⌘K 全操作 + 三视图 + Services 视图 + Console dock spawn/kill/重连 + 关窗不停服 + 托盘重开
+8. **故障注入**：端口占用 / 断网下载 / CA 拒绝 / parked 目录删除（missing）/ daemon  kill 自恢复
+9. **卸载闭环**：corral uninstall → CA 移除 + hosts/resolver 还原 + 无残留进程
+10. **CI 门禁**：P0 emoji 扫描 0 命中 / tokens.json 合法 / 命令表与 consistency-check §3 对齐（无 --all、无 stop&&start）/ openapi.yaml YAML 可解析 / lucide 精确钉 1.61.0
 
 ## 13. 变更记录
 
 | 版本 | 日期 | 变更 | 来源 |
 |---|---|---|---|
 | v0.9-draft | 2026-10-26 | Spec 首稿（13 节），三文档 + R1-R12 + node-pty spike 实证并入；4 项待用户拍板以 TBD 标注 | 总监组装 |
-| — | 待 | 用户拍板后：命名锁定 / PHP 分发诠释 / Windows 签名预算 → v1.0；架构师技术附件 5 章 + openapi.yaml 终稿纳入 | — |
+| v0.10-draft | 2026-10-26 | **R13 用户需求变更**：命名锁定 **Corral**；PHP 分发确认按需下载；MVP 8 → 11 项（+MySQL +Redis +Xdebug）；命令面 15 → 18 组；新增 ADR-008/009；排期 12 → 14-16 周；§4.4 重写、§4.5 新增附加服务节、§6 services 实体、§7 Services 视图（设计待产）、§9 验收 +3、§10/§11 服务边界与坑 +5 | 用户需求 + 总监裁决 |
+| — | 待 | 三文档确认 + Windows 签名预算拍板 → v1.0；架构师技术附件 5 章 + openapi.yaml 终稿纳入 | — |
 
-**待用户拍板（4 项，consistency-check §7）**：① 三文档确认 ② 产品命名（Corral/Stable/Pen/Fold）③ PHP 分发诠释（按需下载 vs 全内置）④ Windows 签名预算（Azure Trusted Signing $9.99/月）
+**待用户拍板（2 项）**：① 三文档确认（PRD v1.0 / 架构 + ADR-001~009 / 设计契约）② Windows 签名预算（Azure Trusted Signing $9.99/月）
+**已拍板**：命名 = **Corral**（R13）；PHP 分发 = 按需下载（R13，ADR-004 Amendment）

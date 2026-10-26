@@ -96,9 +96,28 @@ lucide-react 1.61.0 重命名实证：more-horizontal → ellipsis、alert-circl
 - **图标库补登（2026-10-26）**：lucide-react 精确钉 1.61.0（约 2,171 条目，MVP 33 图标中 31 个直接可用）；`github` 图标已从 Lucide 移除（star + 文字标签替代）；重命名统一走新规范名（ellipsis/circle-alert/triangle-alert）；P0 边界裁定：app icon 与托盘 template image 属品牌美术资产豁免锁定，emoji 禁令全局有效
 - **架构**：ADR-001~007 落盘（001/002 已按补充决议修订）、版本修正、7 条不可行警告转入 Spec 约束清单
 
-## 7. 待用户拍板（4 项）
+## 7. 待用户拍板（2 项）
 
-1. **三文档确认**——确认后自动推进：Phase 1.5 生成 Spec（规格契约）→ Phase 2 设计细化 → Phase 3 并行开发 → Phase 4 测试交付；此后仅在技术不可行或 P0 缺陷时打扰用户
-2. **产品命名**：Corral（总监/PM/设计师一致倾向）/ Stable / Pen / Fold / 用户指定
-3. **PHP 分发诠释**（PM 提请，总监裁定：采纳按需下载）：4 个主力版本默认 + 全版本按需下载 + SHA256 钉死——Herd 同策略、品类标准；字面「全内置打包」包体增至 200-350MB，不建议
-4. **Windows 签名预算**（PM 提请，总监裁定：建议批）：Azure Trusted Signing 约 $9.99/月（约 $120/年）——不批也能发版，但 SmartScreen 恐吓 + 无差分更新，对开源项目冷启动伤害大
+1. **三文档确认**——确认后自动推进：Spec v1.0 定稿 → Phase 3 并行开发 → Phase 4 测试交付；此后仅在技术不可行或 P0 缺陷时打扰用户
+2. **Windows 签名预算**（PM 提请，总监裁定：建议批）：Azure Trusted Signing 约 $9.99/月（约 $120/年）——不批也能发版，但 SmartScreen 恐吓 + 无差分更新，对开源项目冷启动伤害大
+
+**已拍板（R13，2026-10-26 用户消息）**：① 命名 = **Corral**（Herd 是兽群、Corral 是圈住兽群的栏，意象连贯；备选 Stable/Pen/Fold 均有软件域歧义或语义风险）② PHP 分发 = 按需下载（用户选择版本即自动下载，ADR-004 Amendment）
+
+## 8. R13 范围变更登记（2026-10-26 用户需求：mysql / redis / debug）
+
+用户原话要点：PHP 版本用户可选择、选择后自动下载；默认支持 Laravel 所需扩展；增加 MySQL、Redis、debug。
+
+| 变更项 | 裁决 | 落位 |
+|---|---|---|
+| 命名 | 锁定 **Corral** | Spec 头部 + README + 仓库 lkddi/corral |
+| PHP 分发诠释 | 按需下载（ADR-004 已锁定模式，用户描述与之完全一致，确认无变更） | ADR-004 Amendment |
+| Laravel 扩展默认集 | ADR-009 确定清单：Laravel 硬需求 13 项 + 开发默认 9 项（zip/bcmath/intl/gd/pdo_mysql/pdo_pgsql/sqlite3/redis/xdebug）+ 平台条件（pcntl/posix 仅 macOS） | ADR-009 + Spec §4.4/§6 |
+| MySQL 服务 | 进 P0：8.4 LTS 按需下载、catalog 同 PHP、端口 3306、数据目录 `<appdata>/mysql/data`、root 空密码仅 127.0.0.1、默认不登录自启 | ADR-008 + Spec §2#9/§4.5/§5.1/§6/§9/§10/§11 |
+| Redis 服务 | 进 P0：7.x、macOS CI 自编译 prebuild 或 brew 复用检测、Windows 社区预编译 zip、端口 6379 | ADR-008 + Spec 同上 |
+| debug（Xdebug） | 进 P0：xdebug 3.x 随 PHP 版本内置、mode 默认 off、`debug:on/off [site]` 写作用域 php.ini、IDE launch.json 模板由 doctor 输出 | ADR-009 + Spec §5.1/§9 |
+| 命令面 | 15 组 → **18 组**（+mysql:start/stop/restart/status、mysql:install/uninstall、redis:start/stop/restart/status、debug:on/off） | Spec §5.1 + openapi.yaml（35 ops） |
+| 排期 | 12 周 → **14–16 周**（单人 2.5–3 人月） | Spec §2 |
+| GUI | 新增 Services 视图（MySQL/Redis 卡片 + env 建议值复制）——**设计契约待设计师产出 pages/services.md**（当前设计师队友不可用，登记为 Spec §7 唯一外部缺口） | Spec §7 |
+| 原不做清单「数据库服务」行 | 关闭（多引擎 PG/MariaDB 仍不做，v1.2） | Spec §3 |
+
+**连带影响**：openapi.yaml +12 ops / +ServiceStatus（5 态含 not-installed）/ +Service schema / StatusData +services[]；Spec §11 已知坑 +3（MySQL 无签名/macOS Redis 无官方 prebuild/数据目录容错）；错误码仍 10 个（服务端口冲突复用 PORT_CONFLICT、版本未装复用 VERSION_NOT_INSTALLED，不发明新码）。

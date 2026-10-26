@@ -6,13 +6,14 @@
 
 ## 它是什么
 
-Corral 为 Laravel/PHP 开发者提供一键式本地开发环境：多 PHP 版本并存与切换、站点链接（`~/Code/my-app` → `https://my-app.test`）、通配符 TLS 证书（mkcert）、nginx 站点托管、DNS 解析、实时日志与内置终端。GUI 与 CLI 共享同一 daemon，关窗不停服。
+Corral 为 Laravel/PHP 开发者提供一键式本地开发环境：多 PHP 版本并存与切换、站点链接（`~/Code/my-app` → `https://my-app.test`）、通配符 TLS 证书（mkcert）、nginx 站点托管、DNS 解析、**MySQL / Redis 附加服务**、**Xdebug 一键开关**、实时日志与内置终端。GUI 与 CLI 共享同一 daemon，关窗不停服。
 
 ## 为什么做（差异化）
 
-- **Herd Pro 付费墙后的功能免费给**：站点隔离（isolate）、多 PHP 版本、站点级配置等，全部免费。
+- **Herd Pro 付费墙后的功能免费给**：站点隔离（isolate）、多 PHP 版本、附加服务（MySQL/Redis）、Xdebug 控制等，全部免费。
 - **CLI `--json` 一等公民**：每条命令都有稳定的 JSON 信封输出（统一错误码、可重试标记），GUI 中每个操作都展示等价的 CLI 命令——对 AI agent 与脚本用户友好。
 - **双端同权**：macOS 与 Windows 功能对齐，不做"Windows 是二等公民"。
+- **Laravel 开箱即用**：每个 PHP 版本内置 Laravel 官方系统需求全部扩展 + 开发常用集（zip/bcmath/intl/gd/pdo_mysql/pdo_pgsql/sqlite3/redis/xdebug），`corral link` 后零额外扩展安装。
 
 ## 技术栈（规划，已锁定）
 
@@ -27,6 +28,8 @@ Corral 为 Laravel/PHP 开发者提供一键式本地开发环境：多 PHP 版�
 | TLS | mkcert 通配符证书 | 最新版 |
 | DNS | macOS dnsmasq + /etc/resolver；Windows hosts + helper | — |
 | PHP | 按需下载 + SHA256 校验（首批 8.1–8.4） | — |
+| 附加服务 | MySQL 8.4 LTS + Redis 7.x（与 PHP 同 catalog 按需下载，ADR-008） | daemon 托管，默认不登录自启 |
+| 调试 | Xdebug 3.x（随 PHP 版本内置，`debug:on/off` 开关，ADR-009） | mode 默认 off |
 | 终端 | xterm.js（renderer）+ node-pty（宿主 daemon，实测见 spikes/） | node-pty 1.1.0 |
 
 架构细节见 [docs/decisions/](docs/decisions/)（ADR-001 ~ ADR-007）。
@@ -43,13 +46,13 @@ Corral 为 Laravel/PHP 开发者提供一键式本地开发环境：多 PHP 版�
 
 ## 当前状态
 
-**Phase 1.5 —— 规格冻结阶段**：PRD / 架构 / 设计三文档 + Spec v0.9 + openapi.yaml 已完成，一致性终检通过（14 项交叉验证 + 12 条总监裁决）。MVP 范围 8 项 P0 功能，双周增量交付，v1.0 目标 12 周（单人开发约 1.5–2 人月）。
+**Phase 1.5 —— 规格冻结阶段**：PRD / 架构 / 设计三文档 + Spec v0.10 + openapi.yaml（35 端点 / 10 错误码 / 18 组命令面）已完成，一致性终检通过（14 项交叉验证 + 13 条总监裁决）。命名已锁定 **Corral**，PHP 分发确认按需下载。MVP 范围 11 项 P0 功能（含 MySQL/Redis/Xdebug），双周增量交付，v1.0 目标 14–16 周（单人开发约 2.5–3 人月）。
 
 代码尚未开始——Spec 确认后进入 Phase 3 并行开发。
 
 ## 路线图
 
-- **MVP**：站点 link/unlink、PHP 多版本管理（install/use/isolate）、start/stop 整栈、TLS 证书、Logs、Console 终端、`--json` CLI 全命令面
+- **MVP**：站点 link/unlink、PHP 多版本管理（install/use/isolate，Laravel 扩展集内置）、**MySQL/Redis 服务管理**、**Xdebug 开关**、start/stop 整栈、TLS 证书、Logs、Console 终端、`--json` CLI 全命令面（18 组）
 - **v1.1**：托盘富面板、GUI 设置窗口、`link [name]` 可选命名
 - **后续**：项目脚手架扩展（Symfony/WordPress）、差分更新、社区插件
 
