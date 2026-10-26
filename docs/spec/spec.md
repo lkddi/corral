@@ -1,61 +1,63 @@
-# Corral Spec v0.10（规格契约 · 草案）
+# Corral Spec v0.11（规格契约 · 草案）
 
-> 状态：**v0.10-draft**——命名已锁定 **Corral**、PHP 分发已确认按需下载（R13）；待用户对三文档的剩余 2 项拍板（三文档确认 / Windows 签名预算）后升 v1.0
-> 撰写：大湾区靓仔（总监）| 2026-10-26 | 命名：**Corral（已锁定，R13）**；命令名 `corral` 与显示名解耦，改名只动展示层
-> 权威来源：docs/phase1/prd.md（v1.0）· docs/phase1/architecture-research.md + docs/decisions/ADR-001~009 · docs/phase1/consistency-check.md（R1-R13）· docs/design/（v1.6）· docs/spikes/2026-10-26-node-pty.md
+> 状态：**v0.11-draft**——命名锁定 Corral、PHP 分发确认按需下载、v1.0 平台定为 macOS only（R14）；待用户三文档确认后升 v1.0
+> 撰写：大湾区靓仔（总监）| 2026-10-26 | 命名：**Corral（已锁定）**；命令名 `corral` 与显示名解耦
+> 权威来源：docs/phase1/prd.md（v1.0）· docs/phase1/architecture-research.md + docs/decisions/ADR-001~009 · docs/phase1/consistency-check.md（R1-R14）· docs/design/（v1.6）· docs/spikes/2026-10-26-node-pty.md
 > 机器可读伴侣：docs/spec/openapi.yaml（命令面 18 组）· docs/design/design-system/design-tokens.json
 
 ---
 
 ## 1. 产品定义
 
-开源免费（MIT）、macOS + Windows 双端原生、agent 友好的 PHP 本地开发环境管家。原生二进制（nginx + PHP-FPM/php-cgi + dnsmasq），零 Docker/Podman 依赖；Herd 付费墙后的日常功能免费给；CLI `--json` 一等公民，env 级可编程；无账号、无遥测（默认关闭、opt-in）。
+开源免费（MIT）、macOS 原生优先（**v1.0 = macOS only**，Windows v1.1 设计已冻结）、agent 友好的 PHP 本地开发环境管家。原生二进制（nginx + PHP-FPM + dnsmasq），零 Docker/Podman 依赖；Herd 付费墙后的日常功能免费给（含 MySQL/Redis 附加服务与 Xdebug）；CLI `--json` 一等公民，env 级可编程；无账号、无遥测（默认关闭、opt-in）。
 
 - **目标用户**：Laravel/PHP 开发者（主：freelancer 多项目多版本 / AI-first 全栈 / 小团队 Tech Lead）
-- **差异化三轴**：① 核心体验完整免费（不打付费墙）② 双端原生一等公民 ③ CLI/GUI 对等 + `--json` 机器可读（MCP 为 v1.5 薄封装）
+- **差异化三轴**：① 核心体验完整免费（不打付费墙）② macOS 原生一等公民 ③ CLI/GUI 对等 + `--json` 机器可读（MCP 为 v1.5 薄封装）
+- **平台策略（R14）**：v1.0 只做 macOS（12+，Intel + Apple Silicon）；Windows 架构设计全部冻结保留（ADR-003 等继续有效），代码经平台抽象层隔离，v1.1 补 Windows 零重构
 - **产品姿态**：daemon 是唯一配置源与状态源；GUI 是 daemon 的取景器（关窗不停服）；CLI/GUI 命令同源注册表（shared/commands.ts，RPC 与 CLI 1:1）
 
-## 2. MVP 范围（P0 11 项 / 6 个双周增量 / 14–16 周 v1.0）
+## 2. MVP 范围（P0 11 项 / 6 个双周增量 / 约 12 周 v1.0 · macOS only）
 
 | # | P0 功能 | 增量 |
 |---|---|---|
-| 1 | 本地 DNS + nginx 自动 vhost（.test 自动解析） | I1 |
-| 2 | 安装器 + doctor 自检 + 自动更新 | I2 / I5 |
-| 3 | PHP 多版本管理（7.4–8.5）+ 每站点钉版本 | I1 |
+| 1 | 本地 DNS + nginx 自动 vhost（.test 自动解析，macOS /etc/resolver + dnsmasq 通配符） | I1 |
+| 2 | 安装器 + doctor 自检 + 自动更新 | I2 |
+| 3 | PHP 多版本管理（7.4–8.5）+ 每站点钉版本 + Laravel 扩展集内置 | I1 |
 | 4 | Parked 目录自动建站（监听 + 自动上线） | I3 |
 | 5 | CLI 全功能 + `--json` 机器可读输出 | I1 / I5 |
 | 6 | 站点生命周期（link/unlink/start/stop/restart/status） | I1 |
-| 7 | 一键 HTTPS（本地 CA + 系统信任） | I3 |
-| 8 | 最小桌面 GUI（Sites/PHP/Logs 三视图 + Services） | I4 |
-| 9 | **MySQL 服务管理**（8.4 LTS 按需下载 + start/stop/restart/status + 数据目录 + env 引导） | I3 |
-| 10 | **Redis 服务管理**（7.x 按需下载 + 生命周期同 MySQL） | I3 |
+| 7 | 一键 HTTPS（本地 CA + 系统信任，mkcert 通配符） | I3 |
+| 8 | 最小桌面 GUI（Sites/PHP/Logs/Services 四视图 + ⌘K + Console） | I4 |
+| 9 | **MySQL 服务管理**（8.4 LTS 按需下载 + 生命周期 + 数据目录 + env 引导） | I3 |
+| 10 | **Redis 服务管理**（7.x 按需下载 + 生命周期） | I3 |
 | 11 | **Xdebug debug 开关**（版本内置 + debug:on/off [site] + IDE 配置引导） | I3 |
 
-> R13 范围变更（2026-10-26 用户需求）：原 8 项 P0 + 3 项（#9/#10/#11 来自用户「还需要增加 mysql redis debug」），架构复用 PHP 分发体系（ADR-008/009），排期 12 周 → **14–16 周**（单人 1.5–2 人月 → 2.5–3 人月）。
+> R13 范围变更：+3 项（MySQL/Redis/Xdebug）；R14 平台策略：**v1.0 = macOS only**，Windows 整块降 v1.1（设计冻结，零成本挂起）。排期 14–16 → **约 12 周**（单人 2–2.5 人月）。
 
 | 增量 | 周期 | 内容 | 可演示结果 |
 |---|---|---|---|
-| I1 | W1–2 | monorepo 骨架（含 Electron 空壳）；CLI 骨架；PHP 下载管理（SHA256）；link/unlink；nginx vhost；macOS DNS | macOS `corral link` 后 http://app.test 可访问 |
-| I2 | W3–4 | Windows 对等实现（hosts + helper + nginx + php-cgi）；安装器 .dmg/.exe；doctor | Windows 同命令可用；新人装完即过自检 |
+| I1 | W1–2 | monorepo 骨架（含 Electron 空壳 + 平台抽象层）；CLI 骨架；PHP 下载管理（SHA256 + 扩展集）；link/unlink；nginx vhost；macOS DNS | macOS `corral link` 后 http://app.test 可访问 |
+| I2 | W3–4 | 安装器 .dmg（公证/notarization 流水线）；doctor 自检；自动更新骨架 | 新人装完即过自检；更新链路可演示 |
 | I3 | W5–7 | 一键 HTTPS（mkcert 通配符 + 系统信任）；parked 目录监听；**MySQL/Redis 服务 + CLI 命令族（ADR-008）；Xdebug 开关（ADR-009）** | `corral park ~/code` 自动上线 https；`corral mysql:start` 后 Laravel .env 直连 |
-| I4 | W8–10 | 桌面 GUI（Sites/PHP/Logs + **Services 视图** + ⌘K + Console dock + debug 开关） | 不敲命令完成 80% 日常操作 |
-| I5 | W11–13 | CLI `--json` 全量化；.corral.yaml 配置即代码；`corral new`；自动更新 | 脚本/agent 可驱动全部核心操作 |
-| I6 | W14–16 | 边界状态打磨；opt-in 埋点；双语 README；发布 v1.0 | 公开发布 |
+| I4 | W8–10 | 桌面 GUI（Sites/PHP/Logs/**Services** 四视图 + ⌘K + Console dock + debug 开关） | 不敲命令完成 80% 日常操作 |
+| I5 | W11 | CLI `--json` 全量化；.corral.yaml 配置即代码；`corral new`；自动更新 | 脚本/agent 可驱动全部核心操作 |
+| I6 | W12 | 边界状态打磨；opt-in 埋点；双语 README；发布 v1.0（mac） | 公开发布 |
 
 ## 3. 不做清单（MVP 明确不做）
 
 | 不做 | 原因 | 重新评估 |
 |---|---|---|
-| 多引擎数据库（PostgreSQL/MariaDB/SQLite 服务） | MySQL + Redis 已覆盖 Laravel 主路径；每多一引擎 = 一份二进制分发 + 一套数据目录容错 | v1.2 |
+| **Windows 实现** | R14 用户裁决「暂时开发 mac 版本」；架构设计已冻结（ADR-003 等），平台抽象层预留接口桩 | **v1.1**（设计零成本启用） |
+| 多引擎数据库（PostgreSQL/MariaDB/SQLite 服务） | MySQL + Redis 已覆盖 Laravel 主路径 | v1.2 |
 | 邮件捕获 | 引导 Mailpit 独立工具 | v1.3 |
 | dump 窗口 / profiler / Tinker | 深度调试栈重投入 | v2.0 |
 | MCP server | CLI --json 已可驱动；薄封装 | v1.5 |
-| Linux 支持 | 硬约束双端；Linux 有 Lerd 占位 | 社区贡献者出现后 |
+| Linux 支持 | 硬约束；Linux 有 Lerd 占位 | 社区贡献者出现后 |
 | 多语言界面 | 开发者工具通用语英文 | v1.2 |
 | 容器/VM 模式 | 与「原生无依赖」定位冲突 | 不做 |
 | 遥测默认开启 | 开源社区信任生命线 | 永不默认开启 |
 | `corral link [name]` 可选站点名 | 命令面冻结最小化 | v1.1 ADR-lite（R12-3） |
-| Redis 多版本管理 | Laravel 开发 7.x 单版本足够；版本管理机制先不建 | v1.x |
+| Redis 多版本管理 | Laravel 开发 7.x 单版本足够 | v1.x |
 | MySQL 远程访问 / 多实例 | 本地开发单实例 127.0.0.1 足够；远程是安全敞口 | 不做（README 风险提示兜底） |
 
 ## 4. 技术架构
@@ -104,15 +106,15 @@ Electron main ─────────┤
 - **关窗不停服**：daemon 登录自启（自装登录项，不依赖壳插件）
 - **命令同源**：shared/commands.ts 注册表，每个 RPC 与一条 CLI 命令 1:1（参数 schema + 命令字符串模板）；GUI 命令 chip 一律从注册表模板渲染，组件内禁手写
 
-### 4.3 平台差异（对用户透明的部分必须写明，ADR-003）
+### 4.3 平台差异（v1.0 = macOS only；Windows 列 = 冻结设计，v1.1 启用，ADR-003）
 
-| 能力 | macOS | Windows |
+| 能力 | macOS（v1.0 实现） | Windows（v1.1 设计已冻结） |
 |---|---|---|
 | DNS | /etc/resolver/test + dnsmasq（**通配符**） | hosts 精确条目 + SYSTEM helper（**无通配符**，已知不对称） |
 | PHP 进程模型 | PHP-FPM（pm=ondemand 强制） | **无 php-fpm**：php-cgi.exe 进程池自写（每版本独占 FastCGI 端口） |
 | TLS 信任 | security add-trusted-cert（System keychain） | helper 写 LocalMachine\Root（需管理员） |
 | 提权 | 首次 CA 信任 + launchd 特权端口 | helper 安装 + CA 信任（一次性，不可避免） |
-| 更新 | Squirrel.Mac（**拒绝未签名/未公证**）→ Developer ID + notarytool + stapler | Authenticode / Azure Trusted Signing（**待用户拍板**） |
+| 更新 | Squirrel.Mac（**拒绝未签名/未公证**）→ Developer ID + notarytool + stapler | Authenticode / Azure Trusted Signing（**延后至 v1.1 启动时**） |
 
 ### 4.4 PHP 分发与扩展集（ADR-004 + ADR-009，诠释已确认：**按需下载**）
 
@@ -130,12 +132,12 @@ Electron main ─────────┤
 - **数据目录**：`<appdata>/mysql/data`（--initialize-insecure）；root 空密码 + 仅 127.0.0.1（本地开发惯例，README/doctor 风险提示，禁生产）
 - **env 引导**：doctor 与 link 成功输出动态给出 DB_* / REDIS_* 建议值（服务未起 → 提示对应 start 命令）
 
-### 4.6 打包与签名
+### 4.6 打包与签名（v1.0 macOS only）
 
-- electron-builder：macOS .dmg + Windows NSIS；包体 150–200MB（含随包 Node + nginx + mkcert + node-pty 原生模块）
-- macOS：Apple Developer $99/年 + notarytool； entitlements（allow-jit 等；helper 与主进程分离）
-- Windows：Azure Trusted Signing 约 $9.99/月（约 $120/年）——**待用户拍板**；不批的降级路径：NSIS 无签名 + SmartScreen 恐吓 + 无差分更新（对冷启动伤害大，PRD/Spec 风险节明文）
-- 私钥/证书为 CI secret，丢失即断更；GitHub Actions macOS runner 10 倍分钟计费
+- electron-builder：macOS .dmg；包体 150–200MB（含随包 Node + nginx + mkcert + node-pty 原生模块）
+- macOS：Apple Developer $99/年 + notarytool；entitlements（allow-jit 等；helper 与主进程分离）
+- Windows 签名（Azure Trusted Signing 约 $9.99/月）**自动延后**至 v1.1 启动时再拍板（R14）；v1.1 不批的降级路径：NSIS 无签名 + SmartScreen 恐吓 + 无差分更新
+- 私钥/证书为 CI secret，丢失即断更；GitHub Actions macOS runner 10 倍分钟计费（mac-only 后 CI 矩阵大幅收窄）
 
 ### 4.7 数据层（ADR-007）
 
@@ -249,14 +251,14 @@ repository 接口抽象（list/get/put/delete per entity），schema 版本号�
 
 | 指标 | 目标 | 验证口径 |
 |---|---|---|
-| CLI 冷启动 | <300ms；**I1 出口：双端实测 <250ms** | I1 双端基准测试（node-pty spike 同法：10 次中位数/p95） |
+| CLI 冷启动 | <300ms；**I1 出口：macOS 双架构实测 <250ms** | I1 基准测试（node-pty spike 同法：10 次中位数/p95；arm64 + x86_64 各一轮） |
 | link 到可访问 | <3s（PHP 已缓存） | e2e 计时 |
 | daemon 空闲内存 | <200MB | 4 默认版本 + pm=ondemand 前提下实测 |
 | Console spawn + 首字节 | <100ms | spike 实测（10 次）：median 20ms / p95 90ms / min 15ms（含 require + spawn） |
 
-### 9.3 双端对等
+### 9.3 平台验收（v1.0 = macOS only，R14）
 
-Windows 11 + PowerShell 与 macOS 12+（Intel + Apple Silicon）执行相同命令序列 → 命令名/参数/输出结构一致；DNS 机制平台差异对用户透明；全流程无需手动编辑 hosts 或装 Homebrew。
+macOS 12+（Intel + Apple Silicon）执行完整命令序列 → 命令名/参数/输出结构一致；双架构（arm64 + x86_64）产物均由 CI 构建并各跑一遍 e2e；**Windows 设计冻结声明**：ADR-003 及架构报告 Windows 章节继续有效，v1.1 启用时不重新设计、只实现——冻结内容包括 hosts+helper、php-cgi 进程池、无通配符 DNS 不对称、NSSM 注册、Azure 签名方案。
 
 ### 9.4 Console dock（spike 已证 + 验收补强）
 
@@ -264,6 +266,7 @@ xterm.js 渲染 + node-pty 宿主 daemon：spawn（选中站点目录或 home）
 
 ## 10. 边界约束
 
+- **平台抽象铁律（R14）**：所有平台差异必须经平台抽象层隔离（`core/platform` 接口 + `platforms/mac` 实现 + `platforms/win` 接口桩），**禁在业务代码散落 `process.platform` 判断**；v1.1 补 Windows = 填桩 + 复用全部上层。CI 加 lint 规则守护（禁裸 platform 判断出 platforms/ 目录）
 - **空/错/加载三态**：空状态教真实可复制命令；80/443 占用报进程名+PID+释放指引；CA 拒绝给手动信任步骤；下载失败区分网络 vs 校验；PHP 下载确定性进度（%+速度+ETA+Cancel）；站点启动 Starting 秒表（10s 超时转 Error + View logs/Retry）
 - **附加服务边界**（R13）：MySQL 数据目录损坏 → doctor 探测 + 重建引导（禁静默清库）；MySQL root 空密码仅 127.0.0.1（README/doctor 风险提示，禁生产用途）；服务端口冲突（3306/6379）→ PORT_CONFLICT + 占用进程指引；服务启动慢（MySQL 首启 3–10s）→ Starting 秒表同站点机制；Redis 复用 Homebrew 版时版本不符预期要明示
 - **边界值**：站点名连字符/下划线/点；同名 link 覆盖提示；parked 目录删除 → missing 态；符号链接目录；100+ 站点虚拟化
@@ -272,7 +275,7 @@ xterm.js 渲染 + node-pty 宿主 daemon：spawn（选中站点目录或 home）
 - **卸载**：`corral uninstall` 完整路径（CA 移除 + DNS 还原 + 配置清理）
 - **安全红线**：服务仅监听 127.0.0.1；下载物 SHA256 校验；CA 私钥不出本机；安装包签名（macOS 公证 + Windows Authenticode，后者待拍板）；禁 shell:true（参数数组化）
 - **不可行警告（5 条，架构师报告 §9 + ADR-008/009）**：① Windows 无 php-fpm（php-cgi 进程池自写）② 静态 PHP 扩展集固定不可 pecl ③ Windows 无通配符 DNS ④ 一次性提权不可避免 ⑤ MySQL 官方二进制无代码签名（SHA256 + 官方域名 HTTPS 双校验是唯一防线）
-- **成本硬约束**：Apple $99/年 + Windows 签名（待拍板）+ GH Actions macOS 10 倍分钟 + MySQL/Redis catalog CDN 流量
+- **成本硬约束**：Apple $99/年 + GH Actions macOS 10 倍分钟（mac-only 后 CI 矩阵收窄，仅 arm64 + x86_64 两 runner）；Azure 签名延后 v1.1
 
 ## 11. 已知坑（pitfalls）
 
@@ -292,16 +295,16 @@ xterm.js 渲染 + node-pty 宿主 daemon：spawn（选中站点目录或 home）
 
 ## 12. 端到端验证（Phase 4 入口）
 
-1. **Fresh install → link**：干净机安装 → `corral link` → 3s 内 https 可访问（双端）
+1. **Fresh install → link**：干净机安装 → `corral link` → 3s 内 https 可访问（macOS；Windows e2e 随 v1.1 门禁补）
 2. **Park → 自动上线**：`corral park ~/code` → 新建目录 → 60s 内自动 https
 3. **版本闭环**：php:install 8.3 → isolate → use → php:uninstall → 状态一致
 4. **HTTPS 闭环**：secure → 浏览器零警告 → unsecure → 回退
 5. **Agent 闭环**：`corral link --json` → `corral status --json` → `corral logs --json`（jq 可解析；--json 下 open 只返数据不副作用）
 6. **服务闭环**（R13）：`corral mysql:start --json` → 3306 可连 → Laravel migrate 跑通 → `corral mysql:stop` → 连接拒绝；`corral redis:start` → 6379；端口占用制造 PORT_CONFLICT；`corral debug:on` → IDE 收 Xdebug 报文 → `debug:off` → 消失
-7. **GUI 闭环**：⌘K 全操作 + 三视图 + Services 视图 + Console dock spawn/kill/重连 + 关窗不停服 + 托盘重开
-8. **故障注入**：端口占用 / 断网下载 / CA 拒绝 / parked 目录删除（missing）/ daemon  kill 自恢复
-9. **卸载闭环**：corral uninstall → CA 移除 + hosts/resolver 还原 + 无残留进程
-10. **CI 门禁**：P0 emoji 扫描 0 命中 / tokens.json 合法 / 命令表与 consistency-check §3 对齐（无 --all、无 stop&&start）/ openapi.yaml YAML 可解析 / lucide 精确钉 1.61.0
+7. **GUI 闭环**：⌘K 全操作 + 四视图 + Console dock spawn/kill/重连 + 关窗不停服 + 托盘重开
+8. **故障注入**：端口占用 / 断网下载 / CA 拒绝 / parked 目录删除（missing）/ daemon kill 自恢复
+9. **卸载闭环**：corral uninstall → CA 移除 + resolver 还原 + 无残留进程
+10. **CI 门禁**：P0 emoji 扫描 0 命中 / tokens.json 合法 / 命令表与 consistency-check §3 对齐（无 --all、无 stop&&start）/ openapi.yaml YAML 可解析 / lucide 精确钉 1.61.0 / **平台抽象 lint（禁 process.platform 裸判断出 platforms/）** / macOS arm64 + x86_64 双 runner 全量
 
 ## 13. 变更记录
 
@@ -309,7 +312,8 @@ xterm.js 渲染 + node-pty 宿主 daemon：spawn（选中站点目录或 home）
 |---|---|---|---|
 | v0.9-draft | 2026-10-26 | Spec 首稿（13 节），三文档 + R1-R12 + node-pty spike 实证并入；4 项待用户拍板以 TBD 标注 | 总监组装 |
 | v0.10-draft | 2026-10-26 | **R13 用户需求变更**：命名锁定 **Corral**；PHP 分发确认按需下载；MVP 8 → 11 项（+MySQL +Redis +Xdebug）；命令面 15 → 18 组；新增 ADR-008/009；排期 12 → 14-16 周；§4.4 重写、§4.5 新增附加服务节、§6 services 实体、§7 Services 视图（设计待产）、§9 验收 +3、§10/§11 服务边界与坑 +5 | 用户需求 + 总监裁决 |
-| — | 待 | 三文档确认 + Windows 签名预算拍板 → v1.0；架构师技术附件 5 章 + openapi.yaml 终稿纳入 | — |
+| v0.11-draft | 2026-10-26 | **R14 平台策略**：v1.0 = **macOS only**；Windows 降 v1.1（设计冻结，ADR-003 继续有效）；排期 14-16 → 约 12 周；增量表重排（I2 去 Windows 对等，I6 W12 发布）；§4.3 平台差异表标冻结列；§4.6 签名节（Azure 延后）；§9.3 平台验收重写 + 设计冻结声明；§10 新增平台抽象铁律（禁裸 process.platform）；§12 e2e/CI 改 mac（双架构 runner + 抽象 lint） | 用户需求 + 总监裁决 |
+| — | 待 | 三文档确认 → v1.0；架构师技术附件 5 章 + openapi.yaml 终稿纳入 | — |
 
-**待用户拍板（2 项）**：① 三文档确认（PRD v1.0 / 架构 + ADR-001~009 / 设计契约）② Windows 签名预算（Azure Trusted Signing $9.99/月）
-**已拍板**：命名 = **Corral**（R13）；PHP 分发 = 按需下载（R13，ADR-004 Amendment）
+**待用户拍板（1 项）**：三文档确认（PRD v1.0 / 架构 + ADR-001~009 / 设计契约 v1.6）——确认后出 Spec v1.0 并放行 Phase 3（mac only）
+**已拍板**：命名 = Corral（R13）· PHP 分发 = 按需下载（R13）· MySQL/Redis/Xdebug 进 P0（R13）· v1.0 = macOS only，Azure 签名延后（R14）

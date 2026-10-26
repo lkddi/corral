@@ -96,15 +96,15 @@ lucide-react 1.61.0 重命名实证：more-horizontal → ellipsis、alert-circl
 - **图标库补登（2026-10-26）**：lucide-react 精确钉 1.61.0（约 2,171 条目，MVP 33 图标中 31 个直接可用）；`github` 图标已从 Lucide 移除（star + 文字标签替代）；重命名统一走新规范名（ellipsis/circle-alert/triangle-alert）；P0 边界裁定：app icon 与托盘 template image 属品牌美术资产豁免锁定，emoji 禁令全局有效
 - **架构**：ADR-001~007 落盘（001/002 已按补充决议修订）、版本修正、7 条不可行警告转入 Spec 约束清单
 
-## 7. 待用户拍板（2 项）
+## 7. 待用户拍板（1 项）
 
-1. **三文档确认**——确认后自动推进：Spec v1.0 定稿 → Phase 3 并行开发 → Phase 4 测试交付；此后仅在技术不可行或 P0 缺陷时打扰用户
-2. **Windows 签名预算**（PM 提请，总监裁定：建议批）：Azure Trusted Signing 约 $9.99/月（约 $120/年）——不批也能发版，但 SmartScreen 恐吓 + 无差分更新，对开源项目冷启动伤害大
+1. **三文档确认**——确认后自动推进：Spec v1.0 定稿 → Phase 3 并行开发（mac only）→ Phase 4 测试交付；此后仅在技术不可行或 P0 缺陷时打扰用户
+
+**已拍板（R13/R14，2026-10-26 用户消息）**：① 命名 = **Corral** ② PHP 分发 = 按需下载 ③ MySQL/Redis/Xdebug 进 P0 ④ v1.0 = **macOS only**（Windows 设计冻结、v1.1 启用；Azure 签名预算自动延后）
 
 **已拍板（R13，2026-10-26 用户消息）**：① 命名 = **Corral**（Herd 是兽群、Corral 是圈住兽群的栏，意象连贯；备选 Stable/Pen/Fold 均有软件域歧义或语义风险）② PHP 分发 = 按需下载（用户选择版本即自动下载，ADR-004 Amendment）
 
 ## 8. R13 范围变更登记（2026-10-26 用户需求：mysql / redis / debug）
-
 用户原话要点：PHP 版本用户可选择、选择后自动下载；默认支持 Laravel 所需扩展；增加 MySQL、Redis、debug。
 
 | 变更项 | 裁决 | 落位 |
@@ -121,3 +121,20 @@ lucide-react 1.61.0 重命名实证：more-horizontal → ellipsis、alert-circl
 | 原不做清单「数据库服务」行 | 关闭（多引擎 PG/MariaDB 仍不做，v1.2） | Spec §3 |
 
 **连带影响**：openapi.yaml +12 ops / +ServiceStatus（5 态含 not-installed）/ +Service schema / StatusData +services[]；Spec §11 已知坑 +3（MySQL 无签名/macOS Redis 无官方 prebuild/数据目录容错）；错误码仍 10 个（服务端口冲突复用 PORT_CONFLICT、版本未装复用 VERSION_NOT_INSTALLED，不发明新码）。
+
+## 9. R14 平台策略变更（2026-10-26 用户需求：暂时开发 mac 版本）
+
+用户原话：「暂时开发mac版本」。裁决如下：
+
+| 变更项 | 裁决 | 落位 |
+|---|---|---|
+| v1.0 平台 | **macOS only**（12+，Intel + Apple Silicon） | Spec §1/§2/§9/§12 |
+| Windows | 降级 v1.1；**架构设计全部保留**（ADR-003 hosts+helper/php-cgi 进程池/无通配符 DNS 不对称/签名方案）——延期是排期决策不是设计变更，v1.1 直接启用冻结设计 | ADR-003 Amendment + Spec §3/§4.3 |
+| 排期 | 14–16 周 → **约 12 周**（单人 2–2.5 人月；砍掉整块 Windows 对等实现） | Spec §2 增量表 |
+| 签名预算 | Azure Trusted Signing **自动延后**至 Windows 版启动时；Apple $99/年保留 | consistency-check 待拍板 2 → 1 项 |
+| CI | 只跑 macOS runner（GH Actions macOS 10 倍分钟计费大减）；Windows CI 矩阵 v1.1 建 | Spec §12 CI 门禁 |
+| 代码组织铁律 | 平台差异必须经平台抽象层隔离（`platforms/mac` `platforms/win` 双实现、接口在 core），**禁散落 if(process.platform)**——保证 v1.1 补 Windows 零重构；daemon 分层服务的 privileged 层为 Windows helper 预留接口桩 | Spec §10 新增约束 |
+| 验收 | §9.3 双端对等 → macOS 全流程验收 +「Windows 设计冻结声明」；e2e §12 双端 → mac（Windows e2e 脚本随 v1.1 门禁补） | Spec §9.3/§12 |
+| MySQL/Redis | 分发设计双端保留，v1.0 只实现 mac 侧（MySQL 官方 tar.gz 直接可用；Redis 仍需 CI 自编译 prebuild——不减项） | ADR-008 保留 |
+
+**净效果**：v1.0 聚焦 mac 打磨质量（安装体验、证书信任、更新链路），Windows 以冻结设计 + 抽象层接口桩形式零成本挂起，v1.1 启动即实现。
