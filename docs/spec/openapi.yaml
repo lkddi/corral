@@ -42,6 +42,7 @@ info:
     | `corral mysql:start \| stop \| restart \| status` | POST /mysql/start · POST /mysql/stop · POST /mysql/restart · GET /mysql/status |
     | `corral mysql:install <v>` / `corral mysql:uninstall <v>` | POST /mysql/install · POST /mysql/uninstall |
     | `corral redis:start \| stop \| restart \| status` | POST /redis/start · POST /redis/stop · POST /redis/restart · GET /redis/status |
+    | `corral redis:install` / `corral redis:uninstall` | POST /redis/install · POST /redis/uninstall（7.x 单版本，无版本参） |
     | `corral debug:on [site]` / `corral debug:off [site]` | POST /debug/on · POST /debug/off |
     | `corral doctor` / `corral uninstall` | GET /doctor · POST /uninstall |
     | `corral`（裸命令 = 帮助） | GET /help |
@@ -579,13 +580,45 @@ paths:
       operationId: startRedis
       summary: 启动 Redis 服务
       description: |
-        CLI `corral redis:start`。未安装 → hint 指向安装入口（VERSION_NOT_INSTALLED）；
+        CLI `corral redis:start`。未安装 → VERSION_NOT_INSTALLED（hint 指向 `corral redis:install`）；
         端口 6379 占用 → PORT_CONFLICT。macOS 无官方预编译：CI 自编译 prebuild 或复用 Homebrew 版（明示版本）。
       tags: [services]
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "409": { $ref: "#/components/responses/PortConflict" }
         "422": { $ref: "#/components/responses/VersionNotInstalled" }
+  /redis/install:
+    post:
+      operationId: installRedis
+      summary: 安装 Redis（catalog 下载 + SHA256，无版本参）
+      description: |
+        CLI `corral redis:install`。7.x 单版本——**无 version 参数**（多版本管理不做，Spec §3）；
+        macOS 自编译 prebuild / Windows 社区预编译 zip 由 catalog 按平台选取。
+      tags: [services]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "422": { $ref: "#/components/responses/ChecksumMismatch" }
+        "502": { $ref: "#/components/responses/NetworkError" }
+  /redis/uninstall:
+    post:
+      operationId: uninstallRedis
+      summary: 卸载 Redis（数据目录默认保留）
+      description: |
+        CLI `corral redis:uninstall`。默认保留数据目录（appendonly 快照）；
+        仅当 `purge=true` 且 `confirm=true` 时才删数据（同 MySQL 纪律）。
+      tags: [services]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                purge: { type: boolean, default: false }
+                confirm: { type: boolean, default: false }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
   /redis/stop:
     post:
       operationId: stopRedis

@@ -1,0 +1,16 @@
+{
+  "name": "@corral/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "corral": "./dist/corral.js"
+  },
+  "dependencies": {
+    "@corral/shared": "*"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -b"
+  }
+}

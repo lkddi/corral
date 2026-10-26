@@ -1,0 +1,4 @@
+@import "tailwindcss";
+
+/* I1 占位：I4 迁入 design-tokens.css 的 @theme 块（24 色 token/字体/字号/圆角/阴影）。
+   Token 单一来源纪律：禁在此手写 hex（唯一例外 #fff/#000 美术资源内部）。 */

@@ -1,0 +1,32 @@
+{
+  "name": "corral",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Open-source local development environment manager (Laravel Herd alternative) for macOS. Native binaries, zero paywall, CLI-first.",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "packages/core",
+    "packages/cli",
+    "packages/main",
+    "packages/renderer"
+  ],
+  "engines": {
+    "node": ">=24.22.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev": "npm run dev -w @corral/main",
+    "corral": "node packages/cli/dist/corral.js",
+    "lint:emoji": "node scripts/lint-emoji.mjs",
+    "lint:platform": "node scripts/lint-platform.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "24.19.2",
+    "@swc/core": "1.16.20",
+    "esbuild": "0.28.2"
+  }
+}

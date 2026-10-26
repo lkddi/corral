@@ -1,9 +1,10 @@
-# Corral Spec v0.11（规格契约 · 草案）
+# Corral Spec v1.0（规格契约 · 已确认）
 
-> 状态：**v0.11-draft**——命名锁定 Corral、PHP 分发确认按需下载、v1.0 平台定为 macOS only（R14）；待用户三文档确认后升 v1.0
-> 撰写：大湾区靓仔（总监）| 2026-10-26 | 命名：**Corral（已锁定）**；命令名 `corral` 与显示名解耦
+> 状态：**v1.0 已确认**（2026-10-26 用户「开始吧」）——三文档（PRD v1.0 / 架构调研 + ADR-001~009 / 设计契约 v1.6）确认放行，Phase 3 开发启动（macOS only）
+> 撰写：大湾区靓仔（总监）| 2026-10-26 | 命名：**Corral（已锁定）**
 > 权威来源：docs/phase1/prd.md（v1.0）· docs/phase1/architecture-research.md + docs/decisions/ADR-001~009 · docs/phase1/consistency-check.md（R1-R14）· docs/design/（v1.6）· docs/spikes/2026-10-26-node-pty.md
 > 机器可读伴侣：docs/spec/openapi.yaml（命令面 18 组）· docs/design/design-system/design-tokens.json
+> 变更流程：Spec 锁定后，小改（不新增 API 端点/不新增数据表/影响 ≤2 页面/不改核心流程）走变更记录；大改回需求澄清
 
 ---
 
@@ -163,7 +164,8 @@ JSON 原子写 + schema 版本号 + repository 接口抽象；**MVP 无数据库
 | `corral new <framework> <name> [--php <v>]` | 项目脚手架（可选初始 PHP 版本，R12 版本入口之一） |
 | `corral mysql:start \| stop \| restart \| status` | MySQL 服务生命周期（ADR-008；默认不登录自启） |
 | `corral mysql:install <v>` / `corral mysql:uninstall <v>` | MySQL 版本安装/卸载（8.4 LTS 首发） |
-| `corral redis:start \| stop \| restart \| status` | Redis 服务生命周期（7.x 单版本，无 install/uninstall） |
+| `corral redis:start \| stop \| restart \| status` | Redis 服务生命周期（7.x 单版本） |
+| `corral redis:install` / `corral redis:uninstall` | Redis 安装/卸载（**无版本参**——7.x 单版本；多版本管理不做） |
 | `corral debug:on [site]` / `corral debug:off [site]` | Xdebug 开关（site 缺省 = 全局；写作用域 php.ini xdebug 段，ADR-009） |
 | `corral doctor` / `corral uninstall` | 自检 / 卸载（含 CA 移除、DNS 还原） |
 | `corral`（裸命令） | 帮助与命令列表 |
@@ -313,7 +315,7 @@ xterm.js 渲染 + node-pty 宿主 daemon：spawn（选中站点目录或 home）
 | v0.9-draft | 2026-10-26 | Spec 首稿（13 节），三文档 + R1-R12 + node-pty spike 实证并入；4 项待用户拍板以 TBD 标注 | 总监组装 |
 | v0.10-draft | 2026-10-26 | **R13 用户需求变更**：命名锁定 **Corral**；PHP 分发确认按需下载；MVP 8 → 11 项（+MySQL +Redis +Xdebug）；命令面 15 → 18 组；新增 ADR-008/009；排期 12 → 14-16 周；§4.4 重写、§4.5 新增附加服务节、§6 services 实体、§7 Services 视图（设计待产）、§9 验收 +3、§10/§11 服务边界与坑 +5 | 用户需求 + 总监裁决 |
 | v0.11-draft | 2026-10-26 | **R14 平台策略**：v1.0 = **macOS only**；Windows 降 v1.1（设计冻结，ADR-003 继续有效）；排期 14-16 → 约 12 周；增量表重排（I2 去 Windows 对等，I6 W12 发布）；§4.3 平台差异表标冻结列；§4.6 签名节（Azure 延后）；§9.3 平台验收重写 + 设计冻结声明；§10 新增平台抽象铁律（禁裸 process.platform）；§12 e2e/CI 改 mac（双架构 runner + 抽象 lint） | 用户需求 + 总监裁决 |
-| — | 待 | 三文档确认 → v1.0；架构师技术附件 5 章 + openapi.yaml 终稿纳入 | — |
+| **v1.0** | 2026-10-26 | **用户确认放行**（「开始吧」）：Spec 锁定；Services 视图设计稿补入（pages/services.md，总监代拟）；I1 monorepo 骨架启动 | 用户确认 |
+| — | 待 | 架构师技术附件 5 章纳入（附录）；各增量出口条件逐项核验 | — |
 
-**待用户拍板（1 项）**：三文档确认（PRD v1.0 / 架构 + ADR-001~009 / 设计契约 v1.6）——确认后出 Spec v1.0 并放行 Phase 3（mac only）
-**已拍板**：命名 = Corral（R13）· PHP 分发 = 按需下载（R13）· MySQL/Redis/Xdebug 进 P0（R13）· v1.0 = macOS only，Azure 签名延后（R14）
+**待用户拍板：无**。已拍板全部落定：命名 = Corral · PHP 分发 = 按需下载 · MySQL/Redis/Xdebug 进 P0 · v1.0 = macOS only（Azure 签名延后 v1.1）
