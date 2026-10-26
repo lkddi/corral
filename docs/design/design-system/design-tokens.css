@@ -1,0 +1,241 @@
+/* ==========================================================================
+   Corral — Design Tokens v1.1 (Phase 2, 设计师：颜好看)
+   四层架构：A1-identity / A2-structure / B-slot / C-extension
+   浅色为默认（:root）；深色为 [data-theme="dark"]，与浅色完整对等
+   主题策略：默认跟随系统（prefers-color-scheme），用户在原生菜单覆盖
+   铁律：组件内禁止出现任何硬编码色值（唯一例外 #fff / #000 的美术资源内部）
+   v1.1：+Console dock 布局常量（team-lead 2026-10-26 裁决）
+   ========================================================================== */
+
+:root {
+  /* ---------------- A1-identity · Surface 表面层 ---------------- */
+  --bg: #F7F8FA;              /* 窗口/面板底（极轻冷蓝灰，非纯白） */
+  --surface: #FFFFFF;         /* 卡片/行悬浮/弹层底 */
+  --surface-sunken: #EEF0F4;  /* B-slot：三级表面，分组底/输入框/骨架屏 */
+  --fg: #1A1D24;              /* 主文本（非纯黑），对 --bg 15.1:1 */
+  --muted: #646B7A;           /* 副文本，对 --bg 4.9:1 */
+  --border: #DFE2E8;          /* 默认边框 */
+
+  /* ---------------- A1-identity · Accent 强调层（唯一品牌强调色） ----------------
+     使用规则（两角色）：① 当前选中态 ② 主操作按钮。永不装饰性使用。 */
+  --accent: #0F766E;          /* teal-700：按钮底/链接/选中文字，对白 5.4:1 */
+  --accent-hover: #115E59;    /* teal-800 */
+  --accent-active: #134E4A;   /* teal-900 */
+  --accent-on: #FFFFFF;       /* accent 底上的前景 */
+  --accent-subtle: #D9F0EC;   /* 选中行浅底 */
+  --accent-strong: #0B5E58;   /* 选中行上的文字，对 subtle 底 6.4:1 */
+
+  /* ---------------- B-slot · 前景别名 ---------------- */
+  --fg-2: #3D434F;            /* 次级文本 */
+  --meta: #6E7684;            /* 三级元数据，对 --surface 4.6:1 */
+  --border-soft: #EDEFF3;     /* 行分隔线 */
+
+  /* ---------------- A2 · Semantic 语义色 ----------------
+     规则：success/warn/danger 只做 6px 状态点、图标、徽章边框；
+     不承载正文小字（文字用 --fg 或 --warn-text / --danger）。 */
+  --success: #16A34A;         /* 运行中（点/图标专用，上白底 3.3:1 不作文字） */
+  --warn: #D97706;            /* 启动中/警告（点/图标专用） */
+  --warn-text: #B45309;       /* warn 的文字变体，对白 5.0:1 */
+  --danger: #DC2626;          /* 错误/危险操作，对白 4.8:1（可作文字） */
+  --info: #0369A1;            /* 信息提示 */
+
+  /* ---------------- C-extension · Terminal Brand 终端品牌色 ----------------
+     纪律：仅允许出现在 --code-bg 深色代码面上（命令 chip/代码块/日志窗/
+     wordmark pill）。禁止作为 UI 强调色，禁止上浅色底（对比度不达标）。 */
+  --terminal-green: #22C55E;  /* 对 --code-bg 8.3:1 */
+  --code-bg: #0E1116;         /* 代码/命令/日志面：两个主题下均为深色（IDE 惯例） */
+  --code-fg: #D6DEE8;
+  --code-border: #1F242E;
+
+  /* ---------------- B-slot · Badge 徽章 ---------------- */
+  --badge-bg: var(--surface-sunken);
+  --badge-fg: var(--fg-2);
+  --badge-border: var(--border);
+
+  /* ---------------- Typography 字体 ---------------- */
+  --font-ui: "Fira Sans", "Noto Sans SC", -apple-system, "PingFang SC",
+             "Microsoft YaHei", sans-serif;
+  --font-mono: "Fira Code", "JetBrains Mono", "SF Mono", "Cascadia Code",
+               Consolas, monospace;
+
+  /* 字号阶梯（8 级，桌面紧凑 UI；等宽数据一律 --text-xs/sm） */
+  --text-xs: 11px;   /* Badge/版本号/时间戳（mono） */
+  --text-sm: 12px;   /* 辅助说明/端口/meta */
+  --text-md: 13px;   /* 面板次级行文 */
+  --text-base: 14px; /* 正文/列表行/表单 */
+  --text-lg: 16px;   /* 区块标题/主窗口正文 */
+  --text-xl: 18px;   /* 页标题 */
+  --text-2xl: 22px;  /* 弹层标题 */
+  --text-3xl: 28px;  /* 空状态引导标题 */
+
+  --leading-body: 1.5;
+  --leading-list: 1.4;
+  --leading-title: 1.2;
+  --tracking-caps: 0.06em;   /* ALL CAPS 标签 */
+  --tracking-title: -0.01em; /* 标题负字距 */
+
+  /* ---------------- Spacing 间距（4px 网格） ---------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---------------- Radius 圆角（卡片上限 12px，禁 AI 过度圆滑） ---------------- */
+  --radius-sm: 6px;    /* 按钮/输入框/Badge */
+  --radius-md: 8px;    /* 卡片/菜单/面板内块 */
+  --radius-lg: 12px;   /* 弹层/⌘K 面板（上限） */
+  --radius-pill: 9999px;
+
+  /* ---------------- Elevation 层级 ---------------- */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.08);
+  --elev-panel: 0 0 0 1px var(--border), 0 12px 32px rgba(16, 24, 40, 0.14);
+
+  /* ---------------- Focus & Motion ---------------- */
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  --motion-fast: 120ms;  /* hover/按下即时反馈 */
+  --motion-base: 180ms;  /* 状态切换/菜单展开 */
+  --motion-slow: 240ms;  /* 弹层/面板进入 */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ---------------- Layout 布局 ---------------- */
+  --window-min-w: 640px;
+  --window-default-w: 900px;
+  --window-min-h: 480px;
+  --window-default-h: 560px;
+  --sidebar-w: 200px;
+  --row-h: 40px;         /* 站点行高（一屏 10+ 行） */
+  --hit-target: 28px;    /* 桌面鼠标命中区（图标钮 20px 图标 + 28×28 命中） */
+  --toolbar-h: 48px;
+  --console-dock-h: 40%;          /* Console dock 默认高（内容区百分比，默认打开） */
+  --console-dock-min-h: 160px;    /* dock 最小高（保底一行 prompt） */
+  --console-dock-max-h: 70%;      /* dock 最大高（防内容区被挤没） */
+  --console-dock-collapsed-h: 28px; /* 折叠态 slim 条高 */
+
+  /* ---------------- Z-index ---------------- */
+  --z-base: 0;
+  --z-sticky: 100;
+  --z-dropdown: 1000;
+  --z-modal: 1200;
+  --z-palette: 1300;
+  --z-toast: 1400;
+}
+
+/* ==========================================================================
+   深色主题：亮度递进表达层级（不用阴影），accent 变亮
+   ========================================================================== */
+:root[data-theme="dark"] {
+  --bg: #0E1116;
+  --surface: #151A21;
+  --surface-sunken: #1A2029;
+  --fg: #E8ECF2;
+  --muted: #8A94A3;           /* 对 --surface 5.7:1 */
+  --border: #262D38;
+
+  --accent: #2DD4BF;          /* teal-400，对 --surface 9.4:1；深色下 hover 变亮 */
+  --accent-hover: #5EEAD4;
+  --accent-active: #99F6E4;
+  --accent-on: #052E2B;
+  --accent-subtle: rgba(45, 212, 191, 0.12);
+  --accent-strong: #5EEAD4;
+
+  --fg-2: #B9C2CF;
+  --meta: #7D8697;
+  --border-soft: rgba(255, 255, 255, 0.05);
+
+  --success: #3FB950;
+  --warn: #D29922;
+  --warn-text: #D29922;
+  --danger: #F85149;
+  --info: #58A6FF;
+
+  --code-bg: #0A0D12;
+  --code-fg: #D6DEE8;
+  --code-border: #1C222C;
+
+  --elev-ring: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --elev-raised: none;        /* 深色用亮度递进，不用阴影 */
+  --elev-panel: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.5);
+
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+/* ==========================================================================
+   全局基线
+   ========================================================================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 桌面工具：细滚动条，hover 显现 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--meta);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 键盘焦点：全项目统一 focus-visible 环（禁移除） */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* 动效尊重系统偏好：脉冲/旋转/微光全部降级为静态 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 工具类（与 Tailwind 并存的最小集，语义锚点） */
+.mono {
+  font-family: var(--font-mono);
+}
+.code-surface {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--radius-md);
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,710 @@
+# v0.9-draft：待用户确认三文档后纳入 Spec v1.0
+# 命令面唯一权威 = docs/phase1/consistency-check.md §3（15 组命令，R1-R12 裁定）+ §6（10 错误码）
+# 本文件为机器可读伴侣；禁发明新命令/新参数/新错误码
+openapi: 3.1.0
+info:
+  title: Corral Daemon Control API
+  version: 0.9.0-draft
+  summary: Corral daemon 本地控制通道（RPC）——CLI 与 GUI 的共同后端契约
+  description: |
+    ## 定位
+    daemon（单实例，零 Electron 依赖）的本地控制 API。CLI 与 Electron GUI 均为本 API 的客户端，
+    彼此不直连（ADR-002）。每个 RPC 与一条 CLI 命令 1:1（shared/commands.ts 注册表原则）；
+    CLI 的 `--json` 输出即本 API 的响应信封（见下）。
+
+    ## 安全模型
+    - 仅监听 127.0.0.1（双端硬规则）；鉴权 = 每会话 token，经 `X-Corral-Token` 头传递
+    - 服务发现：CLI/GUI 经锁文件 + 端口探测定位 daemon（单实例：锁文件 + 端口探测）
+
+    ## 统一信封（所有响应）
+    `{status, data, error:{code, message, hint, retryable?}}`；`retryable` 由 daemon 判定。
+    CLI `--json` 模式输出同一信封；非 --json 交互模式渲染人类可读文本。
+
+    ## --json 模式副作用规则（R11）
+    OS 级副作用命令（`open` 的浏览器启动 / `edit` 的文件管理器揭示）在 --json 模式下
+    只返回目标数据（站点 URL / 配置目录路径）、不执行副作用；完整动作仅在交互模式执行。
+
+    ## CLI ↔ RPC 映射（15 组命令族）
+    | CLI | RPC |
+    |---|---|
+    | `corral park <dir>` / `corral unpark <dir>` | POST /park · POST /unpark |
+    | `corral link [--php <v>] [--port <n>]` / `corral unlink` | POST /link · POST /unlink |
+    | `corral secure` / `corral unsecure` | POST /secure · POST /unsecure |
+    | `corral isolate <v>` / `corral unisolate` | POST /isolate · POST /unisolate |
+    | `corral use <v>` | POST /use |
+    | `corral php:list` | GET /php/list |
+    | `corral php:install <v>` / `corral php:uninstall <v>` | POST /php/install · POST /php/uninstall |
+    | `corral start [site]` / `corral stop [site]` | POST /start · POST /stop |
+    | `corral restart [site]` / `corral status` / `corral logs` | POST /restart · GET /status · GET /logs |
+    | `corral open <site>` | POST /open |
+    | `corral edit [site]` | POST /edit |
+    | `corral new <framework> <name>` | POST /new |
+    | `corral doctor` / `corral uninstall` | GET /doctor · POST /uninstall |
+    | `corral`（裸命令 = 帮助） | GET /help |
+
+    ## 版本参数归一化（R12）
+    所有接受 PHP 版本参数的入口（use / isolate / php:install / php:uninstall / link --php / new --php）
+    均接受 `php@<v>` 别名（Valet/Homebrew 惯例），在注册表层单一归一化为裸版本号；
+    GUI/CommandChip/CLI 输出一律渲染裸版本形。
+
+    ## 无参语义三类（R12）
+    整栈动作（start/stop 无参 = 启停整个本地栈）/ 帮助（裸 corral）/ 用法错误（open、use 缺必填参 → USAGE_ERROR）。
+
+    ## 错误码目录（10 个，权威 consistency-check §6）
+    | code | 触发 | retryable |
+    |---|---|---|
+    | PORT_CONFLICT | 80/443 被占用 | true |
+    | PERMISSION_DENIED | CA 信任 / 提权被拒 | true |
+    | NETWORK_ERROR | 下载/网络失败 | true |
+    | CHECKSUM_MISMATCH | SHA256 校验失败 | false |
+    | DAEMON_NOT_RUNNING | daemon 未运行 | true |
+    | SITE_EXISTS | link 同名（后者覆盖并提示） | — |
+    | VERSION_NOT_INSTALLED | 指定版本未安装 | false |
+    | CONFIG_INVALID | 配置解析失败 | false |
+    | USAGE_ERROR | 未知命令/缺参/--json 副作用拒绝 | false |
+    | SITE_NOT_FOUND | open/isolate 指向不存在站点 | false |
+
+    ## WS 流通道（非 REST，x-corral-stream 扩展描述）
+    pty 字节流（Console dock 宿主 = daemon 的 node-pty）+ Logs 实时 tail 共用一条 WS 流通道：
+    127.0.0.1 only + token 鉴权，与 RPC 控制通道分端口。消息帧：JSON 控制帧（subscribe/unsubscribe/resize/kill）
+    + 二进制数据帧（pty 字节）。renderer 经 WebSocket 接入（Chromium 页面唯一选项）。
+servers:
+  - url: http://127.0.0.1:{port}
+    description: 本地回环（端口经锁文件发现；生产部署禁止非回环绑定）
+    variables:
+      port:
+        default: "0"
+        description: 占位符——实际端口由 daemon 启动时经锁文件写入，客户端探测获取
+security:
+  - daemonToken: []
+tags:
+  - name: parked
+    description: parked 目录挂载/卸载
+  - name: sites
+    description: 站点生命周期
+  - name: tls
+    description: HTTPS 开关
+  - name: php
+    description: PHP 版本管理
+  - name: stack
+    description: 本地栈启停与状态
+  - name: meta
+    description: 脚手架/自检/卸载/帮助
+paths:
+  /park:
+    post:
+      operationId: parkDir
+      summary: 挂载 parked 目录
+      description: CLI `corral park <dir>`。挂载后目录内新文件夹自动建站（60 秒内上线）。
+      tags: [parked]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dir]
+              properties:
+                dir:
+                  type: string
+                  description: 目录绝对路径
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/ConfigError" }
+  /unpark:
+    post:
+      operationId: unparkDir
+      summary: 卸载 parked 目录
+      description: CLI `corral unpark <dir>`。
+      tags: [parked]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dir]
+              properties:
+                dir: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /link:
+    post:
+      operationId: linkSite
+      summary: 当前目录上线为站点
+      description: |
+        CLI `corral link [--php <v>] [--port <n>]`。站点名 = 目录名（MVP 单一推断，R12-3）；
+        同名重复 link = 后者覆盖并提示（SITE_EXISTS 为提示性，非阻断）。
+        `php` 接受 `php@<v>` 别名，注册表层归一化。
+      tags: [sites]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                php:
+                  type: string
+                  description: PHP 版本（裸版本号或 php@<v> 别名）
+                  examples: ["8.3", "php@8.3"]
+                port:
+                  type: integer
+                  description: 覆盖默认端口
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/PortConflict" }
+        "422": { $ref: "#/components/responses/VersionNotInstalled" }
+  /unlink:
+    post:
+      operationId: unlinkSite
+      summary: 当前目录下线
+      description: CLI `corral unlink`。
+      tags: [sites]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+  /secure:
+    post:
+      operationId: secureSite
+      summary: 开启站点 HTTPS
+      description: CLI `corral secure`。本地 CA 未安装时先触发信任流程（PERMISSION_DENIED 可能）。
+      tags: [tls]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+  /unsecure:
+    post:
+      operationId: unsecureSite
+      summary: 关闭站点 HTTPS
+      description: CLI `corral unsecure`。
+      tags: [tls]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+  /isolate:
+    post:
+      operationId: isolateSite
+      summary: 站点钉 PHP 版本
+      description: |
+        CLI `corral isolate <v>`。v 必填，接受 `php@<v>` 别名归一化（R12）；
+        指定版本未安装 → VERSION_NOT_INSTALLED；站点不存在 → SITE_NOT_FOUND。
+      tags: [php]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version:
+                  type: string
+                  examples: ["8.1", "php@8.1"]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+        "422": { $ref: "#/components/responses/VersionNotInstalled" }
+  /unisolate:
+    post:
+      operationId: unisolateSite
+      summary: 取消站点钉版本（回全局版本）
+      description: CLI `corral unisolate`。
+      tags: [php]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+  /use:
+    post:
+      operationId: useGlobalPhp
+      summary: 切换全局 PHP 版本
+      description: |
+        CLI `corral use <v>`。version 必填——**无参 = USAGE_ERROR**（R12，hint 指向 `corral status`；
+        不学 Valet 无参打印当前版本）。接受 `php@<v>` 别名归一化。
+      tags: [php]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version:
+                  type: string
+                  examples: ["8.3", "php@8.3"]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "422": { $ref: "#/components/responses/VersionNotInstalled" }
+  /php/list:
+    get:
+      operationId: phpList
+      summary: PHP 版本列表（已装/可用）
+      description: CLI `corral php:list`。data.versions[] = PhpVersion。
+      tags: [php]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /php/install:
+    post:
+      operationId: phpInstall
+      summary: 安装 PHP 版本
+      description: |
+        CLI `corral php:install <v>`。触发 catalog 下载 + SHA256 校验；
+        NETWORK_ERROR / CHECKSUM_MISMATCH 在此生效。接受 `php@<v>` 别名归一化。
+        下载为确定性进度（GUI 侧进度条 + 速度 + ETA + Cancel）。
+      tags: [php]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: string, examples: ["8.5", "php@8.5"] }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "502": { $ref: "#/components/responses/NetworkError" }
+        "422": { $ref: "#/components/responses/ChecksumMismatch" }
+  /php/uninstall:
+    post:
+      operationId: phpUninstall
+      summary: 卸载 PHP 版本
+      description: CLI `corral php:uninstall <v>`。接受 `php@<v>` 别名归一化。
+      tags: [php]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/VersionNotInstalled" }
+  /start:
+    post:
+      operationId: startTarget
+      summary: 启动站点或整个本地栈
+      description: |
+        CLI `corral start [site]`。带 site = 启用该站点；**无参 = 启停整个本地栈**
+        （nginx + PHP 池 + DNS，R8/R12）。无 `--all` 旗标（已取消）。
+      tags: [stack]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                site: { type: string, description: 站点名；省略 = 整个本地栈 }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+        "409": { $ref: "#/components/responses/PortConflict" }
+  /stop:
+    post:
+      operationId: stopTarget
+      summary: 停用站点或整个本地栈
+      description: |
+        CLI `corral stop [site]`。带 site = 停用该站点（摘除 vhost + nginx default_server
+        返回停止页，重启后保持）；无参 = 停整个本地栈。
+      tags: [stack]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                site: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+  /restart:
+    post:
+      operationId: restartTarget
+      summary: 重启站点或整个本地栈（daemon 侧原子操作）
+      description: |
+        CLI `corral restart [site]`。daemon 侧原子操作——GUI 不拆 stop&&start 组合 chip（R11）；
+        站点参可选（省略 = 整栈）。
+      tags: [stack]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                site: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+  /status:
+    get:
+      operationId: getStatus
+      summary: 全局状态 + 站点列表（五态同词表）
+      description: |
+        CLI `corral status`。data = StatusData：globalPhp + daemonRunning + sites[]。
+        站点五态枚举 = running/stopped/starting/error/missing（missing = parked 目录被删，标记失效）。
+        当前版本查询的唯一入口（`corral use` 无参 = USAGE_ERROR，hint 指此，R12）。
+      tags: [stack]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "503": { $ref: "#/components/responses/DaemonNotRunning" }
+  /logs:
+    get:
+      operationId: getLogs
+      summary: 日志读取入口（实时 tail 走 WS 流通道）
+      description: |
+        CLI `corral logs`。REST 侧返回最近日志快照；实时 tail 复用 WS 流通道
+        （与 Console dock pty 字节流同一通道，127.0.0.1 only + token，无文件轮询）。
+      tags: [stack]
+      parameters:
+        - name: site
+          in: query
+          required: false
+          schema: { type: string }
+        - name: lines
+          in: query
+          required: false
+          schema: { type: integer, default: 200 }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+  /open:
+    post:
+      operationId: openSite
+      summary: 默认浏览器打开站点 URL
+      description: |
+        CLI `corral open <site>`。**site 必填，无参 = USAGE_ERROR**（R9）。
+        CLI 故意不提供「打开 GUI 窗口」命令（窗口重开 = dock/托盘/开始菜单）。
+        `--json` 模式：只返回 data.url，不执行浏览器启动（R11）。
+      tags: [sites]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [site]
+              properties:
+                site: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+  /edit:
+    post:
+      operationId: editConfig
+      summary: 编辑器打开配置文件 / 文件管理器揭示站点配置目录
+      description: |
+        CLI `corral edit [site]`。无参 = 主配置文件进默认编辑器（原生菜单 Edit configuration… 等价）；
+        带 site = 文件管理器揭示该站点生成配置目录。「IDE 打开项目」是 GUI 菜单特权，不进命令面（R9）。
+        `--json` 模式：只返回 data.path，不执行副作用（R11）。
+      tags: [meta]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                site: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "404": { $ref: "#/components/responses/SiteNotFound" }
+  /new:
+    post:
+      operationId: newProject
+      summary: 项目脚手架
+      description: |
+        CLI `corral new <framework> <name>`。MVP 首选 Laravel 驱动（generic/static 兜底；
+        Symfony/WordPress v1.x）。可选 `--php <v>` 接受 `php@<v>` 别名归一化（R12）。
+      tags: [meta]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [framework, name]
+              properties:
+                framework:
+                  type: string
+                  examples: ["laravel"]
+                name: { type: string }
+                php:
+                  type: string
+                  description: 可选——脚手架项目初始 PHP 版本（R12 版本入口之一）
+                  examples: ["8.3", "php@8.3"]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/UsageError" }
+        "502": { $ref: "#/components/responses/NetworkError" }
+  /doctor:
+    get:
+      operationId: runDoctor
+      summary: 自检（含探测本机已有 DB 并输出 .env 建议值）
+      description: CLI `corral doctor`。探测本机已有 MySQL/PostgreSQL/Redis（端口 + 版本握手）。
+      tags: [meta]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /uninstall:
+    post:
+      operationId: uninstallApp
+      summary: 完整卸载（CA 移除 + DNS 还原 + 配置清理）
+      description: CLI `corral uninstall`。权限拒绝 → PERMISSION_DENIED + 降级说明。
+      tags: [meta]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+  /help:
+    get:
+      operationId: showHelp
+      summary: 帮助与命令列表（裸 corral）
+      description: CLI 裸命令 `corral` = 显示帮助与命令列表（GUI 窗口入口 = dock/托盘/开始菜单，CLI 不承担）。
+      tags: [meta]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+x-corral-stream:
+  description: |
+    WS 流通道（非 REST）：pty 字节流（Console dock，宿主 = daemon node-pty 1.1.0，
+    四平台 prebuild + postinstall chmod +x spawn-helper，见 docs/spikes/2026-10-26-node-pty.md）
+    + Logs 实时 tail 共用。127.0.0.1 only + token；与 RPC 控制通道分端口。
+    帧格式：JSON 控制帧（{op: subscribe|unsubscribe|resize|kill, ...}）+ 二进制数据帧（pty 字节）。
+    Logs tail = subscribe(logs, site)；pty = subscribe(pty, site?, cols, rows)。
+components:
+  securitySchemes:
+    daemonToken:
+      type: apiKey
+      in: header
+      name: X-Corral-Token
+      description: daemon 单机会话 token（锁文件同源分发；127.0.0.1 only 硬规则）
+  schemas:
+    Envelope:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+        data:
+          type: object
+          additionalProperties: true
+          description: 各 RPC 的 data 结构见 operations 描述（Site/StatusData/PhpVersion/url/path 等）
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code: { $ref: "#/components/schemas/ErrorCode" }
+        message: { type: string }
+        hint:
+          type: string
+          description: 可操作修复提示（如正确用法 + 等价 CLI 命令）
+        retryable:
+          type: boolean
+          description: 由 daemon 判定（网络类可重试；配置/校验类不可重试）
+    ErrorCode:
+      type: string
+      enum:
+        - PORT_CONFLICT
+        - PERMISSION_DENIED
+        - NETWORK_ERROR
+        - CHECKSUM_MISMATCH
+        - DAEMON_NOT_RUNNING
+        - SITE_EXISTS
+        - VERSION_NOT_INSTALLED
+        - CONFIG_INVALID
+        - USAGE_ERROR
+        - SITE_NOT_FOUND
+      description: 10 个错误码；触发条件与 retryable 见 info.description 错误码目录
+    SiteStatus:
+      type: string
+      enum: [running, stopped, starting, error, missing]
+      description: |
+        五态同词表（CLI/GUI 共享）：missing = parked 目录被删（站点标记失效而非静默消失）。
+        GUI 标签：Running/Stopped/Starting…/Error/Missing（6px 点 + 文字双编码）。
+    Site:
+      type: object
+      required: [name, status]
+      properties:
+        name: { type: string }
+        path: { type: string }
+        php: { type: string, description: 站点钉版本或继承全局 }
+        port: { type: integer }
+        secure: { type: boolean }
+        enabled: { type: boolean, description: false = 停用（停止页） }
+        status: { $ref: "#/components/schemas/SiteStatus" }
+    PhpVersion:
+      type: object
+      required: [version, installed]
+      properties:
+        version: { type: string, examples: ["8.3"] }
+        installed: { type: boolean }
+        isDefault: { type: boolean }
+        path: { type: string }
+        extensions:
+          type: array
+          items: { type: string }
+          description: 静态构建扩展清单（固定不可 pecl，README 公布）
+    StatusData:
+      type: object
+      properties:
+        globalPhp: { type: string }
+        daemonRunning: { type: boolean }
+        sites:
+          type: array
+          items: { $ref: "#/components/schemas/Site" }
+  responses:
+    Ok:
+      description: 成功信封（status=ok，data 见各 operation）
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status: { type: string, enum: [ok] }
+              data: { type: object, additionalProperties: true }
+          example:
+            status: ok
+            data: {}
+    UsageError:
+      description: USAGE_ERROR（retryable=false）——未知命令/缺参/--json 副作用拒绝
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+          example:
+            status: error
+            error:
+              code: USAGE_ERROR
+              message: "missing required argument: site"
+              hint: "Usage: corral open <site> — see corral help"
+              retryable: false
+    NotFound:
+      description: 目标不存在（路径/目录）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+          example:
+            status: error
+            error:
+              code: USAGE_ERROR
+              message: "directory not found"
+              hint: "Check the path and try again"
+              retryable: false
+    SiteNotFound:
+      description: SITE_NOT_FOUND（retryable=false）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+          example:
+            status: error
+            error:
+              code: SITE_NOT_FOUND
+              message: "site 'my-app' not found"
+              hint: "Run corral status to list available sites"
+              retryable: false
+    PortConflict:
+      description: PORT_CONFLICT（retryable=true）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+          example:
+            status: error
+            error:
+              code: PORT_CONFLICT
+              message: "port 80 is in use by nginx (PID 501)"
+              hint: "Stop the conflicting process, or retry with --port=<n>"
+              retryable: true
+    PermissionDenied:
+      description: PERMISSION_DENIED（retryable=true）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+          example:
+            status: error
+            error:
+              code: PERMISSION_DENIED
+              message: "CA trust was declined"
+              hint: "Trust the local CA manually — see corral doctor output"
+              retryable: true
+    NetworkError:
+      description: NETWORK_ERROR（retryable=true）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+          example:
+            status: error
+            error:
+              code: NETWORK_ERROR
+              message: "download failed: connection reset"
+              hint: "Check your network and retry"
+              retryable: true
+    ChecksumMismatch:
+      description: CHECKSUM_MISMATCH（retryable=false，校验类不可重试）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+          example:
+            status: error
+            error:
+              code: CHECKSUM_MISMATCH
+              message: "SHA256 mismatch for php-8.3"
+              hint: "The download may be corrupted — retry the download"
+              retryable: false
+    VersionNotInstalled:
+      description: VERSION_NOT_INSTALLED（retryable=false）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+          example:
+            status: error
+            error:
+              code: VERSION_NOT_INSTALLED
+              message: "PHP 8.5 is not installed"
+              hint: "Run corral php:install 8.5 first"
+              retryable: false
+    ConfigError:
+      description: CONFIG_INVALID（retryable=false）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+          example:
+            status: error
+            error:
+              code: CONFIG_INVALID
+              message: "config parse failed at line 12"
+              hint: "Fix the configuration file — see corral doctor"
+              retryable: false
+    DaemonNotRunning:
+      description: DAEMON_NOT_RUNNING（retryable=true）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+          example:
+            status: error
+            error:
+              code: DAEMON_NOT_RUNNING
+              message: "daemon is not running"
+              hint: "It should restart automatically. Run corral doctor if it persists."
+              retryable: true

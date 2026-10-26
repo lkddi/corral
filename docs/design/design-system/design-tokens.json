@@ -1,0 +1,151 @@
+{
+  "$meta": {
+    "name": "Corral Design Tokens",
+    "version": "1.1.0",
+    "phase": 2,
+    "designer": "颜好看",
+    "date": "2026-10-26",
+    "register": "product",
+    "axes": { "design_variance": 3, "motion_intensity": 3, "visual_density": 6 },
+    "theme": { "default": "light", "strategy": "system (prefers-color-scheme) + user override via data-theme" },
+    "platform": "desktop (macOS + Windows), Electron renderer",
+    "ui_language": "en"
+  },
+  "color": {
+    "light": {
+      "bg":            { "value": "#F7F8FA", "type": "color", "layer": "A1-identity", "desc": "window/panel background" },
+      "surface":       { "value": "#FFFFFF", "type": "color", "layer": "A1-identity", "desc": "card/row hover/popover background" },
+      "surface-sunken":{ "value": "#EEF0F4", "type": "color", "layer": "B-slot", "desc": "third surface: group bg/input/skeleton" },
+      "fg":            { "value": "#1A1D24", "type": "color", "layer": "A1-identity", "desc": "primary text, 15.1:1 on bg" },
+      "muted":         { "value": "#646B7A", "type": "color", "layer": "A1-identity", "desc": "secondary text, 4.9:1 on bg" },
+      "border":        { "value": "#DFE2E8", "type": "color", "layer": "A1-identity" },
+      "accent":        { "value": "#0F766E", "type": "color", "layer": "A1-identity", "desc": "single brand accent, 5.4:1 on white. Two roles only: current selection + primary action" },
+      "accent-hover":  { "value": "#115E59", "type": "color", "layer": "A2" },
+      "accent-active": { "value": "#134E4A", "type": "color", "layer": "A2" },
+      "accent-on":     { "value": "#FFFFFF", "type": "color", "layer": "A2" },
+      "accent-subtle": { "value": "#D9F0EC", "type": "color", "layer": "A2", "desc": "selected row background" },
+      "accent-strong": { "value": "#0B5E58", "type": "color", "layer": "A2", "desc": "text on accent-subtle, 6.4:1" },
+      "fg-2":          { "value": "#3D434F", "type": "color", "layer": "B-slot" },
+      "meta":          { "value": "#6E7684", "type": "color", "layer": "B-slot", "desc": "tertiary metadata, 4.6:1 on surface" },
+      "border-soft":   { "value": "#EDEFF3", "type": "color", "layer": "B-slot", "desc": "row dividers" },
+      "success":       { "value": "#16A34A", "type": "color", "layer": "A2-semantic", "desc": "running status dot/icon ONLY (3.3:1 on white - never text)" },
+      "warn":          { "value": "#D97706", "type": "color", "layer": "A2-semantic", "desc": "starting/warning dot/icon ONLY" },
+      "warn-text":     { "value": "#B45309", "type": "color", "layer": "A2-semantic", "desc": "text-safe warn, 5.0:1" },
+      "danger":        { "value": "#DC2626", "type": "color", "layer": "A2-semantic", "desc": "error/destructive, 4.8:1 text-safe" },
+      "info":          { "value": "#0369A1", "type": "color", "layer": "A2-semantic" },
+      "terminal-green":{ "value": "#22C55E", "type": "color", "layer": "C-extension", "desc": "ONLY on code-bg surfaces. Never UI accent, never on light bg (2.5:1)" },
+      "code-bg":       { "value": "#0E1116", "type": "color", "layer": "C-extension", "desc": "code/command/log surface - dark in BOTH themes" },
+      "code-fg":       { "value": "#D6DEE8", "type": "color", "layer": "C-extension" },
+      "code-border":   { "value": "#1F242E", "type": "color", "layer": "C-extension" },
+      "badge-bg":      { "value": "#EEF0F4", "type": "color", "layer": "B-slot", "alias": "surface-sunken" },
+      "badge-fg":      { "value": "#3D434F", "type": "color", "layer": "B-slot", "alias": "fg-2" },
+      "badge-border":  { "value": "#DFE2E8", "type": "color", "layer": "B-slot", "alias": "border" }
+    },
+    "dark": {
+      "bg":            { "value": "#0E1116", "type": "color", "layer": "A1-identity" },
+      "surface":       { "value": "#151A21", "type": "color", "layer": "A1-identity" },
+      "surface-sunken":{ "value": "#1A2029", "type": "color", "layer": "B-slot" },
+      "fg":            { "value": "#E8ECF2", "type": "color", "layer": "A1-identity" },
+      "muted":         { "value": "#8A94A3", "type": "color", "layer": "A1-identity", "desc": "5.7:1 on surface" },
+      "border":        { "value": "#262D38", "type": "color", "layer": "A1-identity" },
+      "accent":        { "value": "#2DD4BF", "type": "color", "layer": "A1-identity", "desc": "teal-400, 9.4:1 on surface; hover goes lighter in dark" },
+      "accent-hover":  { "value": "#5EEAD4", "type": "color", "layer": "A2" },
+      "accent-active": { "value": "#99F6E4", "type": "color", "layer": "A2" },
+      "accent-on":     { "value": "#052E2B", "type": "color", "layer": "A2" },
+      "accent-subtle": { "value": "rgba(45,212,191,0.12)", "type": "color", "layer": "A2" },
+      "accent-strong": { "value": "#5EEAD4", "type": "color", "layer": "A2" },
+      "fg-2":          { "value": "#B9C2CF", "type": "color", "layer": "B-slot" },
+      "meta":          { "value": "#7D8697", "type": "color", "layer": "B-slot" },
+      "border-soft":   { "value": "rgba(255,255,255,0.05)", "type": "color", "layer": "B-slot" },
+      "success":       { "value": "#3FB950", "type": "color", "layer": "A2-semantic" },
+      "warn":          { "value": "#D29922", "type": "color", "layer": "A2-semantic" },
+      "warn-text":     { "value": "#D29922", "type": "color", "layer": "A2-semantic" },
+      "danger":        { "value": "#F85149", "type": "color", "layer": "A2-semantic" },
+      "info":          { "value": "#58A6FF", "type": "color", "layer": "A2-semantic" },
+      "terminal-green":{ "value": "#22C55E", "type": "color", "layer": "C-extension" },
+      "code-bg":       { "value": "#0A0D12", "type": "color", "layer": "C-extension" },
+      "code-fg":       { "value": "#D6DEE8", "type": "color", "layer": "C-extension" },
+      "code-border":   { "value": "#1C222C", "type": "color", "layer": "C-extension" },
+      "badge-bg":      { "value": "#1A2029", "type": "color", "layer": "B-slot", "alias": "surface-sunken" },
+      "badge-fg":      { "value": "#B9C2CF", "type": "color", "layer": "B-slot", "alias": "fg-2" },
+      "badge-border":  { "value": "#262D38", "type": "color", "layer": "B-slot", "alias": "border" }
+    }
+  },
+  "font": {
+    "ui":    { "value": "\"Fira Sans\", \"Noto Sans SC\", -apple-system, \"PingFang SC\", \"Microsoft YaHei\", sans-serif", "type": "fontFamily" },
+    "mono":  { "value": "\"Fira Code\", \"JetBrains Mono\", \"SF Mono\", \"Cascadia Code\", Consolas, monospace", "type": "fontFamily", "desc": "domains, versions, ports, paths, CLI commands, log lines" },
+    "size": {
+      "xs":   { "value": "11px", "type": "dimension", "desc": "badge/version/timestamp (mono)" },
+      "sm":   { "value": "12px", "type": "dimension", "desc": "secondary/ports/meta" },
+      "md":   { "value": "13px", "type": "dimension", "desc": "panel secondary" },
+      "base": { "value": "14px", "type": "dimension", "desc": "body/list row/form" },
+      "lg":   { "value": "16px", "type": "dimension", "desc": "section title" },
+      "xl":   { "value": "18px", "type": "dimension", "desc": "page title" },
+      "2xl":  { "value": "22px", "type": "dimension", "desc": "overlay title" },
+      "3xl":  { "value": "28px", "type": "dimension", "desc": "empty state headline" }
+    },
+    "weight": { "read": 400, "emphasize": 500, "announce": 600 },
+    "leading": { "body": 1.5, "list": 1.4, "title": 1.2 },
+    "tracking": { "caps": "0.06em", "title": "-0.01em", "body": "0" }
+  },
+  "space": {
+    "1": { "value": "4px", "type": "dimension" },
+    "2": { "value": "8px", "type": "dimension" },
+    "3": { "value": "12px", "type": "dimension" },
+    "4": { "value": "16px", "type": "dimension" },
+    "5": { "value": "20px", "type": "dimension" },
+    "6": { "value": "24px", "type": "dimension" },
+    "8": { "value": "32px", "type": "dimension" },
+    "10": { "value": "40px", "type": "dimension" },
+    "12": { "value": "48px", "type": "dimension" },
+    "16": { "value": "64px", "type": "dimension" }
+  },
+  "radius": {
+    "sm":   { "value": "6px", "type": "dimension", "desc": "button/input/badge" },
+    "md":   { "value": "8px", "type": "dimension", "desc": "card/menu" },
+    "lg":   { "value": "12px", "type": "dimension", "desc": "overlay/palette (hard cap)" },
+    "pill": { "value": "9999px", "type": "dimension" }
+  },
+  "shadow": {
+    "flat":   { "value": "none", "type": "boxShadow" },
+    "ring":   { "value": "0 0 0 1px var(--border)", "type": "boxShadow", "alias": "border" },
+    "raised": { "value": "0 1px 2px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.08)", "type": "boxShadow", "desc": "light theme only; dark uses none (luminance progression)" },
+    "panel":  { "value": "0 0 0 1px var(--border), 0 12px 32px rgba(16,24,40,0.14)", "type": "boxShadow", "desc": "floating overlay" }
+  },
+  "motion": {
+    "fast": { "value": "120ms", "type": "duration", "desc": "hover/press" },
+    "base": { "value": "180ms", "type": "duration", "desc": "state change/menu open" },
+    "slow": { "value": "240ms", "type": "duration", "desc": "overlay enter" },
+    "ease": { "value": "cubic-bezier(0.2, 0, 0, 1)", "type": "cubicBezier" }
+  },
+  "layout": {
+    "window": { "min_w": "640px", "default_w": "900px", "min_h": "480px", "default_h": "560px" },
+    "sidebar_w": { "value": "200px", "type": "dimension" },
+    "row_h":     { "value": "40px", "type": "dimension", "desc": "site row" },
+    "hit_target":{ "value": "28px", "type": "dimension", "desc": "desktop mouse target (20px icon inside)" },
+    "toolbar_h": { "value": "48px", "type": "dimension" },
+    "palette_w": { "value": "560px", "type": "dimension", "desc": "Cmd+K overlay width" },
+    "console_dock": {
+      "h":           { "value": "40%", "type": "dimension", "desc": "bottom integrated terminal dock, open by default (team-lead 2026-10-26)" },
+      "min_h":       { "value": "160px", "type": "dimension" },
+      "max_h":       { "value": "70%", "type": "dimension" },
+      "collapsed_h": { "value": "28px", "type": "dimension", "desc": "slim bar when collapsed; toggle Ctrl+`; state persisted in config" }
+    }
+  },
+  "z": {
+    "base": 0, "sticky": 100, "dropdown": 1000, "modal": 1200, "palette": 1300, "toast": 1400
+  },
+  "icons": {
+    "library": "lucide-react",
+    "license": "ISC",
+    "grid": "24x24",
+    "stroke": "2px",
+    "sizes": { "inline": 16, "button": 20, "standalone": 24 },
+    "reference": "design-system/icons.md"
+  },
+  "status_vocabulary": {
+    "enum": ["running", "stopped", "starting", "error", "missing"],
+    "labels": { "running": "Running", "stopped": "Stopped", "starting": "Starting", "error": "Error", "missing": "Missing" },
+    "note": "shared enum + labels across daemon / CLI / GUI (CLI-GUI parity, no GUI-only states). 'missing' = parked dir deleted (PRD §8), requires daemon enum extension - flagged for Spec"
+  }
+}
