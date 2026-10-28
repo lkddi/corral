@@ -5,8 +5,9 @@
  *   CLI/GUI ──RPC(TCP 127.0.0.1 + token)──► daemon ──► nginx/PHP-FPM/服务族
  *                └──WS(127.0.0.1 + token, 另端口)──► pty 字节流 + Logs tail
  *
- * I1 范围：单实例锁 + RPC 线协议 + 命令注册框架 + status/help 实装；
- * sites/php/nginx/dns/tls/services 各服务族按增量（I1-I3）逐块填充。
+ * I1 范围：单实例锁 + RPC 线协议 + 命令注册框架 + status / php 版本族 / link / unlink /
+ * start / stop / restart / use / isolate / logs / open / edit / doctor 实装（服务层全真链路：nginx + PHP-FPM + DNS）；
+ * parked 监听（I3）、TLS（I3）、services 族（I3）、debug（I3）按增量逐块填充。
  */
 
 import { createServer, type Server } from 'node:net';
@@ -16,6 +17,8 @@ import path from 'node:path';
 import { COMMANDS, findCommand, renderHelp, ok, type CommandSpec } from '@corral/shared';
 import type { Envelope } from '@corral/shared';
 import { detectPlatform } from '../platform/index.js';
+import { createServices, type Services } from '../services/index.js';
+import { registerHandlers } from './handlers.js';
 import { JsonStore } from './state.js';
 
 export interface DaemonOptions {
@@ -61,19 +64,8 @@ export class Daemon {
     this.handlers.set(spec.id, handler);
   }
 
-  /** 内置命令：help / status（不依赖外部服务族） */
-  private registerBuiltins(): void {
-    this.register(findCommand('status')!, async (ctx) => {
-      const state = await ctx.store.read();
-      return ok({
-        globalPhp: state.settings.globalPhp,
-        daemonRunning: true,
-        sites: state.sites,
-        services: state.services,
-      });
-    });
-
-    // doctor / mysql:status / redis:status 等按增量实装；未实装命令返回明确错误而非静默
+  /** 内置命令：仅注册尚未被服务层覆盖的命令（未实装 → 明确报错，禁静默） */
+  private fillStubs(): void {
     for (const spec of COMMANDS) {
       if (!this.handlers.has(spec.id)) {
         this.register(spec, () => ({
@@ -110,7 +102,9 @@ export class Daemon {
   }
 
   async start(): Promise<void> {
-    this.registerBuiltins();
+    const svc: Services = await createServices(this.opts.dataDir, this.store);
+    registerHandlers(this, svc);
+    this.fillStubs();
     const acquired = await this.acquireLock();
     if (!acquired) {
       console.error('[corral] daemon already running');

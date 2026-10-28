@@ -120,15 +120,104 @@ function renderHuman(envelope: Envelope<never>, spec: CommandSpec | undefined): 
     const err = envelope.error!;
     return `error: ${err.message}\n  hint: ${err.hint}`;
   }
-  if (spec?.id === 'status') {
-    const d = envelope.data as unknown as { globalPhp: string; sites: Array<{ name: string; status: string; php: string }>; services: Array<{ name: string; status: string; port: number }> };
-    const lines = [`Global PHP: ${d.globalPhp}`, '', 'Sites:'];
-    lines.push(d.sites.length ? d.sites.map((s) => `  ${s.name.padEnd(24)} ${s.status.padEnd(10)} php ${s.php}`).join('\n') : '  (none — run corral link in a project directory)');
-    lines.push('', 'Services:');
-    lines.push(d.services.map((s) => `  ${s.name.padEnd(24)} ${s.status.padEnd(16)} :${s.port}`).join('\n'));
-    return lines.join('\n');
+  const data = (envelope.data ?? {}) as Record<string, unknown>;
+  switch (spec?.id) {
+    case 'status':
+      return renderStatus(data);
+    case 'php:list':
+      return renderPhpList(data);
+    case 'link':
+      return renderLink(data);
+    case 'doctor':
+      return renderDoctor(data);
+    case 'start':
+    case 'stop':
+    case 'restart':
+      return renderStack(data);
+    case 'logs':
+      return renderLogs(data);
+    default:
+      return JSON.stringify(data, null, 2);
   }
-  return JSON.stringify(envelope.data ?? {}, null, 2);
+}
+
+type Row = Record<string, unknown>;
+const arr = (v: unknown): Row[] => (Array.isArray(v) ? (v as Row[]) : []);
+const s = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : fallback);
+
+function renderStatus(d: Record<string, unknown>): string {
+  const stack = (d.stack ?? {}) as Row;
+  const dns = (d.dns ?? {}) as Row;
+  const php = (d.php ?? {}) as Row;
+  const sites = arr(d.sites);
+  const services = arr(d.services);
+  const lines = [
+    `Stack   nginx ${stack.nginxRunning ? `running (pid ${stack.nginxPid})` : 'stopped'} · :${stack.httpPort} · .${stack.tld}`,
+    `DNS     ${dns.configured ? 'configured (wildcard)' : `not configured — ${s(dns.hint, s(dns.reason))}`}`,
+    `PHP     global ${s(php.global, s(d.globalPhp))} · installed ${(php.installed as string[] | undefined)?.join(', ') || 'none'}`,
+    '',
+    'Sites:',
+  ];
+  lines.push(
+    sites.length
+      ? sites
+          .map((x) => `  ${s(x.name).padEnd(24)} ${s(x.state).padEnd(10)} php ${s(x.php).padEnd(8)} ${s(x.url)}`)
+          .join('\n')
+      : '  (none — run corral link inside a project directory)',
+  );
+  lines.push('', 'Services:');
+  lines.push(services.map((x) => `  ${s(x.name).padEnd(24)} ${s(x.status).padEnd(16)} :${x.port}`).join('\n'));
+  return lines.join('\n');
+}
+
+function renderPhpList(d: Record<string, unknown>): string {
+  const entries = arr(d.entries);
+  const lines = [`global ${s(d.global)} · catalog ${s(d.catalogSource)}`, '', 'PHP versions:'];
+  for (const e of entries) {
+    const flag = e.installed ? (e.fpmRunning ? 'installed · fpm up' : 'installed') : 'available';
+    lines.push(`  ${s(e.version).padEnd(9)} ${flag.padEnd(18)} ${e.installed ? s(e.path) : ''}`);
+  }
+  return lines.join('\n');
+}
+
+function renderLink(d: Record<string, unknown>): string {
+  const site = (d.site ?? {}) as Row;
+  const lines = [`Linked ${s(site.name)} → ${s(site.url)}  (php ${s(site.php)})`];
+  if (!d.dnsConfigured) lines.push(`DNS not configured yet — ${s(d.dnsHint, 'run corral start')}`);
+  return lines.join('\n');
+}
+
+function renderDoctor(d: Record<string, unknown>): string {
+  const checks = arr(d.checks);
+  const lines = checks.map((c) => `  ${c.ok ? 'ok  ' : 'FAIL'} ${s(c.name).padEnd(18)} ${s(c.detail).split('\n')[0]}`);
+  const failed = checks.filter((c) => !c.ok);
+  if (failed.length) {
+    lines.push('', 'Hints:');
+    for (const f of failed) lines.push(`  ${s(f.name)}: ${s(f.hint)}`);
+  }
+  lines.unshift(d.healthy ? 'doctor: all checks passed' : `doctor: ${failed.length} check(s) need attention`);
+  return lines.join('\n');
+}
+
+function renderStack(d: Record<string, unknown>): string {
+  const parts: string[] = [];
+  if (typeof d.scope === 'string') parts.push(`scope: ${d.scope}`);
+  const site = d.site as Row | undefined;
+  if (site) parts.push(`${s(site.name)} → ${s(site.state)}`);
+  if (typeof d.nginx === 'string') parts.push(`nginx: ${d.nginx}`);
+  if (Array.isArray(d.fpm)) parts.push(`fpm: ${arr(d.fpm).map((x) => `${s(x.version)}${x.started ? '' : ' (failed)'}`).join(', ') || 'none'}`);
+  if (typeof d.nginxStopped === 'boolean') parts.push(`nginx stopped: ${d.nginxStopped}`);
+  const dns = d.dns as Row | undefined;
+  if (dns && !dns.configured) parts.push(`dns: not configured — ${s(dns.hint)}`);
+  return parts.join('\n');
+}
+
+function renderLogs(d: Record<string, unknown>): string {
+  const streams = arr(d.streams);
+  if (!streams.length) return 'no log streams';
+  return streams
+    .map((st) => `--- ${s(st.file)} (${arr(st.lines).length} lines) ---\n${(st.lines as string[] | undefined)?.join('\n') ?? ''}`)
+    .join('\n');
 }
 
 async function main(): Promise<void> {
@@ -188,6 +277,8 @@ async function main(): Promise<void> {
     }
   });
   if (parsed.json) args.__json = true;
+  // cwd 形动词族（link/unlink/secure/isolate/unisolate）：daemon 无客户端 cwd，必须显式带上
+  if (spec.cwdForm) args.cwd = process.cwd();
 
   const endpoint = await discoverDaemon();
   if (!endpoint) {

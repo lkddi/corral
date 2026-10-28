@@ -34,7 +34,7 @@ Corral 为 Laravel/PHP 开发者提供一键式本地开发环境：多 PHP 版�
 | 调试 | Xdebug 3.x（随 PHP 版本内置，`debug:on/off` 开关，ADR-009） | mode 默认 off |
 | 终端 | xterm.js（renderer）+ node-pty（宿主 daemon，实测见 spikes/） | node-pty 1.1.0 |
 
-架构细节见 [docs/decisions/](docs/decisions/)（ADR-001 ~ ADR-007）。
+架构细节见 [docs/decisions/](docs/decisions/)（ADR-001 ~ ADR-009）。
 
 ## 文档
 
@@ -43,14 +43,21 @@ Corral 为 Laravel/PHP 开发者提供一键式本地开发环境：多 PHP 版�
 | [docs/phase1/](docs/phase1/) | PRD、竞品与架构调研、三文档一致性终检（R1–R12 裁决记录） |
 | [docs/decisions/](docs/decisions/) | ADR-001 ~ 007 架构决策记录 + 未决事项登记册 |
 | [docs/design/](docs/design/) | 设计契约：DESIGN.md、design-system（Token / 组件状态 / 图标）、pages（Sites / PHP / Logs / Console / 命令面板） |
-| [docs/spec/](docs/spec/) | Spec 规格契约（13 节）、openapi.yaml（23 端点 / 10 错误码）、技术附件 |
-| [docs/spikes/](docs/spikes/) | 技术验证报告（node-pty 双端 spike） |
+| [docs/spec/](docs/spec/) | Spec 规格契约（13 节）、openapi.yaml（37 端点 / 10 错误码 / 18 组命令面）、技术附件 |
+| [docs/spikes/](docs/spikes/) | 技术验证报告（node-pty 双端 spike、PHP 运行时与站点链路实测） |
 
 ## 当前状态
 
-**Phase 1.5 —— 规格冻结阶段**：PRD / 架构 / 设计三文档 + Spec v0.10 + openapi.yaml（35 端点 / 10 错误码 / 18 组命令面）已完成，一致性终检通过（14 项交叉验证 + 13 条总监裁决）。命名已锁定 **Corral**，PHP 分发确认按需下载。MVP 范围 11 项 P0 功能（含 MySQL/Redis/Xdebug），双周增量交付，v1.0 目标 14–16 周（单人开发约 2.5–3 人月）。
+**I1 已交付（可跑通真实站点）**：规格冻结后进入增量开发，I1 完成——
 
-代码尚未开始——Spec 确认后进入 Phase 3 并行开发。
+- monorepo 5 包（shared 命令注册表 / core daemon + 服务层 / cli / Electron 壳 / React 渲染层），TypeScript strict 全绿
+- **站点链路全真**：`corral link` → nginx vhost（独立 conf 生成）→ php-fpm unix socket → HTTP 响应实测返回 `PHP 8.4.23 / fpm-fcgi`
+- **PHP 按需下载**：catalog 实时通道 + 离线快照，cli+fpm 双制品、Range 断点续传、长度校验、TOFU 摘要
+- **五态站点状态**（running/stopped/starting/error/missing）、端口冲突归因到进程+PID、未知 Host 404 不串站
+- 实测基线：CLI 冷启动 median 48ms / p95 53ms（预算 250ms）；复跑脚本 `scripts/smoke-i1.sh`
+- 已知缺口（已进 Spec §11）：common 构建缺 `intl`/`xdebug`，`phpBuild=bulk` 待 I2 验证后切默认
+
+下一步 I2：macOS 安装器 + doctor 全量检查 + 双架构打包。开发进度见 [docs/spec/spec.md](docs/spec/spec.md) 与 `docs/spikes/`。
 
 ## 路线图
 

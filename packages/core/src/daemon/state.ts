@@ -30,7 +30,16 @@ export interface StateFile extends SchemaVersioned {
     shellChain: string[];
   };
   parkedDirs: string[];
-  phpVersions: Array<{ version: string; path: string; installedAt: string; extensions: string[] }>;
+  phpVersions: Array<{
+    version: string;
+    path: string;
+    installedAt: string;
+    extensions: string[];
+    /** 落盘归档摘要（TOFU 基线或 catalog 钉死值） */
+    sha256?: string;
+    /** pinned = catalog 提供摘要；tofu = 首次下载记录 */
+    checksumSource?: 'pinned' | 'tofu';
+  }>;
   services: Array<{
     name: string;
     version: string;

@@ -119,8 +119,11 @@ Electron main ─────────┤
 
 ### 4.4 PHP 分发与扩展集（ADR-004 + ADR-009，诠释已确认：**按需下载**）
 
-- app 内 catalog（版本 + SHA256 + URL）+ 解压到应用数据目录；macOS static-php-cli 静态构建 / Windows 官方 NTS zip
+- app 内 catalog（版本 + SHA256 + URL）+ 解压到应用数据目录；macOS 走 static-php-cli 静态构建（`dl.static-php.dev`，`?format=json` 清单 + 离线快照兜底）/ Windows 官方 NTS zip
 - **用户选择版本即自动下载安装**（R13 确认按需下载模式）；MVP 默认呈现 8.1/8.2/8.3/8.4 四个主力版本，7.4/8.0/8.5 按需
+- **一版本 = 两制品**（I1 实测）：`php-<v>-cli-<platform>` + `php-<v>-fpm-<platform>`，合并解到同一目录（fpm 归档不含 php CLI）；合计约 28MB/版本
+- **下载韧性**：Range 断点续传 + 重试 + 长度校验（CDN 会在数 MB 处掐连接；截断归档解包表现为「归档里没有 php 二进制」，必须显式比对 content-length）；摘要下载完成后整体计算
+- **构建变体开关** `phpBuild: common | bulk`（默认 common）：common 实测缺 `intl`/`xdebug`；bulk 待 I2 验证扩展清单后定默认。缺口由 `corral doctor` 的 `php-ext-<v>` 检查显式暴露，禁假装完整
 - **默认扩展集**（ADR-009 确定清单，README 与 php:list --json 公布）：Laravel 硬需求 13 项（ctype/curl/dom/fileinfo/filter/hash/mbstring/openssl/pcre/pdo/session/tokenizer/xml）+ 开发默认（zip/bcmath/intl/gd/pdo_mysql/pdo_pgsql/sqlite3/redis/xdebug）+ 平台条件（pcntl/posix 仅 macOS）
 - 静态构建扩展集固定、不可 pecl（README 公布清单）；清单外扩展不支持，是「零依赖开箱」的代价
 - PHP/nginx 二进制更新与 app 更新解耦（独立 catalog 通道）
@@ -295,6 +298,15 @@ xterm.js 渲染 + node-pty 宿主 daemon：spawn（选中站点目录或 home）
 12. **macOS Redis 无官方预编译**（ADR-008）：CI 自编译 prebuild（可执行位校验同 node-pty 纪律）或 Homebrew 复用检测；降级路径 = brew install 引导（体验降级但不阻断）
 13. **MySQL 数据目录容错**：--initialize-insecure 后数据目录非空/损坏 → doctor 探测 + 重建引导；大库场景卸载时禁误删（mysql:uninstall 默认保留 data，--purge 才删，二次确认）
 
+### 11.1 I1 实测新增（2026-10-28，详见 docs/spikes/2026-10-28-php-runtime.md）
+
+- **fpm 归档不含 php CLI**：`php-<v>-fpm-*.tar.gz` 内只有 `php-fpm`。只装 fpm → 站点能跑但 `artisan`/composer/`php -r` 全失效。必须 cli+fpm 双制品合并解包。
+- **固定 `--strip-components=1` 会剥空根层布局归档**：症状是「下载成功但解出空目录 → 报没有 php 二进制」，极易误判为网络问题。解包必须布局自适应（单顶层目录则上移，否则原样搬平）。
+- **CDN 中途掐连接**：单连接在 4–5MB 处重置，`pipeline` 不报错但文件截断。必须 Range 续传 + `content-length` 比对；截断归档会造成假性「解包失败」。
+- **common 静态构建缺 intl / xdebug**：Laravel 13 项硬需求齐全，开发默认集缺这两项。静态构建无法 pecl 补装 → 只能换 `bulk` 变体或自建；已由 `php-ext-<v>` 检查显式暴露。
+- **精简 nginx 构建缺 uwsgi/scgi 模块**：生成 `uwsgi_temp_path`/`scgi_temp_path` 会让 `nginx -t` 直接 emerg（Herd 随包的 nginx 1.25.5 即如此）。Corral 只用 fastcgi 一种上游，不生成这两项。
+- **本机 `HTTP_PROXY` 会截本地回环请求**：curl 访问 `127.0.0.1:<port>` 必须 `--noproxy '*'`，否则得到代理返回的 502/假 404，看起来像站点故障。
+
 ## 12. 端到端验证（Phase 4 入口）
 
 1. **Fresh install → link**：干净机安装 → `corral link` → 3s 内 https 可访问（macOS；Windows e2e 随 v1.1 门禁补）
@@ -307,6 +319,17 @@ xterm.js 渲染 + node-pty 宿主 daemon：spawn（选中站点目录或 home）
 8. **故障注入**：端口占用 / 断网下载 / CA 拒绝 / parked 目录删除（missing）/ daemon kill 自恢复
 9. **卸载闭环**：corral uninstall → CA 移除 + resolver 还原 + 无残留进程
 10. **CI 门禁**：P0 emoji 扫描 0 命中 / tokens.json 合法 / 命令表与 consistency-check §3 对齐（无 --all、无 stop&&start）/ openapi.yaml YAML 可解析 / lucide 精确钉 1.61.0 / **平台抽象 lint（禁 process.platform 裸判断出 platforms/）** / macOS arm64 + x86_64 双 runner 全量
+
+### 12.1 I1 实测基线（2026-10-28，可复跑：scripts/smoke-i1.sh）
+
+| 项 | 实测值 |
+|---|---|
+| `corral link` → 站点可访问 | 通过：`curl -H "Host: <name>.<tld>"` 返回 `PHP 8.4.23 / sapi fpm-fcgi` |
+| 未知 Host | 404（兜底 default_server，不串站） |
+| stop/start 站点 | vhost 摘除/恢复，五态 stopped↔running 正确 |
+| 重复 unlink | `SITE_NOT_FOUND`（非静默成功） |
+| 端口冲突归因 | 指向真实占用进程与 PID（实测指向 Herd 的 nginx on :80） |
+| CLI 冷启动 | 裸命令 median 48ms / p95 53ms；`status --json` median 98ms / p95 99ms（预算 250ms） |
 
 ## 13. 变更记录
 
